@@ -1,0 +1,14 @@
+# Binaries
+/cmd/dev-cli/dev-cli
+/cmd/dev-cli/game-server
+
+# JS Client
+client/poker-app/public/images/cards/*
+
+# System generated files
+.DS_Store
+
+# VSCode
+*.code-workspace
+.vscode
+
