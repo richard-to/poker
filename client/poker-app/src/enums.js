@@ -12,6 +12,7 @@ export const Event = deepFreeze({
   JOIN: 'join',
   NEW_MESSAGE: 'new-message',
   ON_JOIN: 'on-join',
+  ON_TAKE_SEAT: 'on-take-seat',
   RAISE: 'raise',
   SEND_MESSAGE: 'send-message',
   TAKE_SEAT: 'take-seat',

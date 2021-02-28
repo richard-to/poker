@@ -33,7 +33,7 @@ const numPlayers int = 6
 
 const systemUsername string = "System"
 
-// GameStage is an enum the current round of betting
+// GameStage is an enum for the current round of betting
 type GameStage int
 
 // Rounds of a game
