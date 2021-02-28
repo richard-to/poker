@@ -32,6 +32,47 @@ func (t *Table) GetActivePlayers() []*Player {
 	return players
 }
 
+// AwardPot awards the entire pot to a player. This is used when all players have folded
+// and there is no need to determine the best hand.
+func (t *Table) AwardPot(p *Player) {
+	p.Chips += t.Pot.GetTotal()
+}
+
+// DetermineWinners determines the winners of the hand
+func (t *Table) DetermineWinners() [][]PlayerHand {
+	subPots := t.Pot.GetSidePots()
+	numSubPots := len(subPots)
+	allWinningHands := make([][]PlayerHand, numSubPots)
+
+	// Multiple pots can be created if there are players who are all in with
+	// different chip stacks.
+	for i, subPot := range subPots {
+		winningHands := FindWinningHands(subPot.Players, t)
+
+		// In the case of a tie, divide the pot amongst the winners
+		chipsWon := subPot.Total / len(winningHands)
+		remainderChipsWon := subPot.Total % len(winningHands)
+
+		// If the pot can be split evenly among all winners, then
+		// we will distribute one leftover chip to each player until
+		// there are no more chips
+		for j := range winningHands {
+			playerChipsWon := chipsWon
+			if remainderChipsWon > 0 {
+				remainderChipsWon--
+				playerChipsWon++
+			}
+			// Keep track of the chips won for logging purposes, such as displaying to chat
+			winningHands[j].ChipsWon = playerChipsWon
+			// Award winning chips to player
+			winningHands[j].Player.Chips += playerChipsWon
+		}
+		allWinningHands[i] = winningHands
+	}
+
+	return allWinningHands
+}
+
 // Seat represents a seat at the poker table.
 //
 // - Seat uses ring.Ring under the hood to create a circular list.
@@ -310,4 +351,28 @@ func CountSeatsByPlayerStatus(seat *Seat, status PlayerStatus) int {
 		seat = seat.Next()
 	}
 	return statusCount
+}
+
+// HasEveryoneFolded checks if everyone except the current player has folded
+func HasEveryoneFolded(currentSeat *Seat) bool {
+	nextSeat := currentSeat.Next()
+	for i := 0; i < nextSeat.Len()-1; i++ {
+		if nextSeat.Player.Status == PlayerActive && nextSeat.Player.HasFolded == false {
+			return false
+		}
+		nextSeat = nextSeat.Next()
+	}
+	return true
+}
+
+// HasEveryoneFoldedOrIsAllIn checks if everyone except the current player has folded or is all in
+func HasEveryoneFoldedOrIsAllIn(currentSeat *Seat) bool {
+	nextSeat := currentSeat.Next()
+	for i := 0; i < nextSeat.Len()-1; i++ {
+		if nextSeat.Player.Status == PlayerActive && (nextSeat.Player.HasFolded == false && nextSeat.Player.Chips > 0) {
+			return false
+		}
+		nextSeat = nextSeat.Next()
+	}
+	return true
 }

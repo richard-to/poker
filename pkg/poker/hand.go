@@ -40,8 +40,9 @@ func (h HandRank) String() string {
 
 // PlayerHand represents a player's best hand among the possible combinations.
 type PlayerHand struct {
-	Player *Player
-	Hand   *Hand
+	ChipsWon int
+	Hand     *Hand
+	Player   *Player
 }
 
 // FindWinningHands finds the players with the best hands.
@@ -52,7 +53,7 @@ func FindWinningHands(ps []*Player, t *Table) []PlayerHand {
 	for i := range ps {
 		if len(winners) == 0 {
 			// If no winners have been found, add the current player as the winner by default
-			winners = append(winners, PlayerHand{ps[i], GetBestHand(ps[i], t)})
+			winners = append(winners, PlayerHand{Hand: GetBestHand(ps[i], t), Player: ps[i]})
 		} else {
 			bestHand := GetBestHand(ps[i], t)
 			winningHand := winners[0].Hand
@@ -60,11 +61,11 @@ func FindWinningHands(ps []*Player, t *Table) []PlayerHand {
 			if result == GreaterThan {
 				// If we found a better hand, set the current player as the winner
 				winners = []PlayerHand{
-					{ps[i], bestHand},
+					{Hand: bestHand, Player: ps[i]},
 				}
 			} else if result == EqualTo {
 				// If we have a tie, the players will share the win
-				winners = append(winners, PlayerHand{ps[i], bestHand})
+				winners = append(winners, PlayerHand{Hand: bestHand, Player: ps[i]})
 			}
 		}
 	}
