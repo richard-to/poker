@@ -2,10 +2,11 @@ import React from 'react'
 import ReactDOM from 'react-dom'
 
 import './index.css'
+
 import App from './App'
 import { AppStateProvider } from './appStore'
-import { WebSocketProvider } from './WebSocket'
 import reportWebVitals from './reportWebVitals'
+import { WebSocketProvider } from './WebSocket'
 
 ReactDOM.render(
   <React.StrictMode>
