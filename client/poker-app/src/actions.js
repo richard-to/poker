@@ -9,6 +9,13 @@ const onJoinGame = (dispatch, params) => {
   })
 }
 
+const onTakeSeat = (dispatch, params) => {
+  dispatch({
+    type: actionTypes.SERVER.ON_TAKE_SEAT,
+    seatID: params.seatID,
+  })
+}
+
 const newMessage = (dispatch, params) => {
   dispatch({
     type: actionTypes.CHAT.NEW_MESSAGE,
@@ -53,11 +60,22 @@ const sendPlayerAction = (client, action, params = {}) => {
   }))
 }
 
+const takeSeat = (client, seatID) => {
+  client.send(JSON.stringify({
+    action: Event.TAKE_SEAT,
+    params: {
+      seatID,
+    },
+  }))
+}
+
 export {
   joinGame,
   newMessage,
   onJoinGame,
+  onTakeSeat,
   sendMessage,
   sendPlayerAction,
+  takeSeat,
   updateGame,
 }

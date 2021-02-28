@@ -5,16 +5,30 @@ import (
 	"fmt"
 )
 
+// PlayerStatus is the status of the player
+type PlayerStatus int
+
+// Player statuses
+const (
+	PlayerVacated PlayerStatus = iota
+	PlayerSittingOut
+	PlayerActive
+)
+
+func (p PlayerStatus) String() string {
+	return [...]string{"vacated", "sitting-out", "active"}[p]
+}
+
 // Player is a player in the poker game. It represents their state for a round
 // of poker, which encompasses all betting rounds from preflop, flop, turn, and
 // river.
 type Player struct {
-	Active    bool
 	Chips     int
 	HasFolded bool
 	HoleCards [2]*Card
 	ID        string
 	Name      string
+	Status    PlayerStatus
 }
 
 // PrintHoleCards gets the player's hand in abbreviated format.

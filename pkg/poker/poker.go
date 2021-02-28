@@ -24,7 +24,7 @@ func (t *Table) GetActivePlayers() []*Player {
 	players := make([]*Player, 0)
 	nextSeat := t.SmallBlind
 	for i := 0; i < nextSeat.Len(); i++ {
-		if nextSeat.Player.Active {
+		if nextSeat.Player.Status == PlayerActive {
 			players = append(players, nextSeat.Player)
 		}
 		nextSeat = nextSeat.Next()
@@ -292,10 +292,22 @@ func GetNextActiveSeat(currentSeat *Seat) (*Seat, error) {
 		if nextSeat == currentSeat {
 			return nil, fmt.Errorf("Next active seat not found. All players have folded")
 		}
-		if nextSeat.Player.Active == true && nextSeat.Player.HasFolded == false {
+		if nextSeat.Player.Status == PlayerActive && nextSeat.Player.HasFolded == false {
 			break
 		}
 		nextSeat = nextSeat.Next()
 	}
 	return nextSeat, nil
+}
+
+// CountSeatsByPlayerStatus counts the number of seats by player status
+func CountSeatsByPlayerStatus(seat *Seat, status PlayerStatus) int {
+	statusCount := 0
+	for i := 0; i < seat.Len(); i++ {
+		if seat.Player.Status == status {
+			statusCount++
+		}
+		seat = seat.Next()
+	}
+	return statusCount
 }

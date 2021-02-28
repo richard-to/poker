@@ -18,6 +18,7 @@ const initialState = {
     messages: [],
   },
   gameState: null,
+  seatID: null,
   userID: null,
   username: null,
 }
@@ -41,6 +42,11 @@ const AppStateProvider = ({ children }) => {
           userID: action.userID,
           username: action.username,
         }
+        case actionTypes.SERVER.ON_TAKE_SEAT:
+          return {
+            ...state,
+            seatID: action.seatID,
+          }
         case actionTypes.GAME.UPDATE:
           return {
             ...state,

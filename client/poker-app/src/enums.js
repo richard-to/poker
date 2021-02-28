@@ -14,10 +14,18 @@ export const Event = deepFreeze({
   ON_JOIN: 'on-join',
   RAISE: 'raise',
   SEND_MESSAGE: 'send-message',
+  TAKE_SEAT: 'take-seat',
   UPDATE_GAME: 'update-game',
 })
 
+export const PlayerStatus = deepFreeze({
+  ACTIVE: 'active',
+  SITTING_OUT: 'sitting-out',
+  VACATED: 'vacated',
+})
+
 export const Stage = deepFreeze({
+  WAITING: 'Waiting',
   PREFLOP: 'Preflop',
   FLOP: 'Flop',
   TURN: 'Turn',

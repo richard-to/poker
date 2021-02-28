@@ -7,26 +7,25 @@ import AppPropTypes from '../AppPropTypes'
 import { Stage } from '../enums'
 import { getCardImage } from '../helpers'
 
+const CARD_ANIM_VARIANTS = {
+  deal: {
+    opacity: 1,
+    scale: 1,
+    transition: { duration: 0.75 },
+    x: 0,
+    y: 0,
+  },
+  initial: {
+    opacity: 0,
+    x: 500,
+    y: 1000,
+  },
+  visible: {
+    opacity: 1,
+  },
+}
 
 const CommunityCards = ({flop, turn, river, stage}) => {
-  const variants = {
-    deal: {
-      opacity: 1,
-      scale: 1,
-      transition: { duration: 0.75 },
-      x: 0,
-      y: 0,
-    },
-    initial: {
-      opacity: 0,
-      x: 500,
-      y: 1000,
-    },
-    visible: {
-      opacity: 1,
-    },
-  }
-
   const flopAnim1 = useAnimation()
   const flopAnim2 = useAnimation()
   const flopAnim3 = useAnimation()
@@ -73,23 +72,23 @@ const CommunityCards = ({flop, turn, river, stage}) => {
       return (
         <div key={index} className="relative m-2">
           <div className="invisible">
-            <img src="images/cards/1B.svg" alt="Card" className="max-h-32" />
+            <img alt="Card" className="max-h-32" src="images/cards/1B.svg" />
           </div>
           <motion.div
             animate={cardControls[index]}
-            initial="initial"
-            variants={variants}
             className="absolute top-0 left-0"
+            initial="initial"
             key={index}
+            variants={CARD_ANIM_VARIANTS}
           >
-            <img src={getCardImage(card)} alt="Card" className="max-h-32" />
+            <img alt="Card" className="max-h-32" src={getCardImage(card)} />
           </motion.div>
         </div>
       )
     }
     return (
-      <div key={index} className="m-2 invisible">
-        <img src="images/cards/1B.svg" alt="Card" className="max-h-32" />
+      <div className="m-2 invisible" key={index}>
+        <img alt="Card" className="max-h-32" src="images/cards/1B.svg" />
       </div>
     )
   })

@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types'
 
-import { Event, Stage } from './enums'
+import { Event, PlayerStatus, Stage } from './enums'
 
 const actions = PropTypes.arrayOf(PropTypes.oneOf([
   Event.CALL,
@@ -15,7 +15,6 @@ const card = PropTypes.shape({
 })
 
 const player = PropTypes.shape({
-  active: PropTypes.bool,
   chips: PropTypes.number,
   chipsInPot: PropTypes.number,
   holeCards: PropTypes.arrayOf(card),
@@ -24,9 +23,15 @@ const player = PropTypes.shape({
   isDealer: PropTypes.bool,
   id: PropTypes.string,
   name: PropTypes.string,
+  status: PropTypes.oneOf([
+    PlayerStatus.VACATED,
+    PlayerStatus.SITTING_OUT,
+    PlayerStatus.ACTIVE,
+  ]),
 })
 
 const stage = PropTypes.oneOf([
+  Stage.WAITING,
   Stage.PREFLOP,
   Stage.FLOP,
   Stage.TURN,

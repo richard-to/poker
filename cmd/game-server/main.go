@@ -12,7 +12,7 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	hub := server.NewHub()
-	gameState := server.StartGame()
+	gameState := server.NewGameState()
 
 	go hub.Run()
 

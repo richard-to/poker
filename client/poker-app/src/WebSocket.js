@@ -5,10 +5,12 @@ import { w3cwebsocket} from "websocket"
 
 import {
   onJoinGame,
+  onTakeSeat,
   newMessage,
   joinGame,
   sendMessage,
   sendPlayerAction,
+  takeSeat,
   updateGame,
 } from './actions'
 import { appStore } from './appStore'
@@ -47,6 +49,8 @@ const WebSocketProvider = ({ children }) => {
       let event = JSON.parse(payload.data)
       if (event.action === Event.ON_JOIN) {
         onJoinGame(dispatch, event.params)
+      } else if (event.action === Event.ON_TAKE_SEAT) {
+        onTakeSeat(dispatch, event.params)
       } else if (event.action === Event.NEW_MESSAGE) {
         newMessage(dispatch, event.params)
       } else if (event.action === Event.UPDATE_GAME) {
@@ -63,6 +67,7 @@ const WebSocketProvider = ({ children }) => {
     joinGame: partial(joinGame, client),
     sendPlayerAction: partial(sendPlayerAction, client),
     sendMessage: partial(sendMessage, client, appState.username),
+    takeSeat: partial(takeSeat, client),
   }
 
   return (
