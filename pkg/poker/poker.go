@@ -368,7 +368,7 @@ func HasEveryoneFolded(currentSeat *Seat) bool {
 // HasEveryoneFoldedOrIsAllIn checks if everyone except the current player has folded or is all in
 func HasEveryoneFoldedOrIsAllIn(currentSeat *Seat) bool {
 	nextSeat := currentSeat.Next()
-	for i := 0; i < nextSeat.Len()-1; i++ {
+	for i := 0; i < nextSeat.Len(); i++ {
 		if nextSeat.Player.Status == PlayerActive && (nextSeat.Player.HasFolded == false && nextSeat.Player.Chips > 0) {
 			return false
 		}

@@ -9,6 +9,7 @@ const cssInfo = classNames(
   'border-gray-800',
   'border-opacity-10',
   'rounded-xl',
+  'shadow-md',
 
   // spacing
   'px-3',

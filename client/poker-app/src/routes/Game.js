@@ -24,7 +24,7 @@ const Game = () => {
 
   const appContext = useContext(appStore)
   const { appState } = appContext
-  const { chat, gameState, seatID } = appState
+  const { chat, error, gameState, seatID } = appState
 
   const [cardDelay, setCardDelay] = useState(DEFAULT_CARD_DELAY)
   const [newDeal, setNewDeal] = useState(true)
@@ -65,17 +65,17 @@ const Game = () => {
   }, [newDeal, players, stage])
 
   if (!gameState) {
-    return (
-      <div className="container-fluid">
-        <div className="flex h-screen bg-green-600">
-          <div className="sm:w-3/4 h-screen flex flex-col overflow-y-auto">LOADING</div>
-        </div>
-      </div>
-    )
+    return <div className="container-fluid"></div>
   }
 
   return (
     <div className="container-fluid">
+      {error &&
+        <div className="flex w-full">
+          <div className="flex-1 bg-red-500 shadow-md text-center p-2 text-gray-50">{error}</div>
+        </div>
+      }
+
       <div className="flex h-screen bg-green-600">
         <div className="sm:w-3/4 h-screen flex flex-col overflow-y-auto">
             <div className="flex">

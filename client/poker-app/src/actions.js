@@ -1,6 +1,14 @@
 import actionTypes from './actionTypes'
 import { Event } from './enums'
 
+const error = (dispatch, params) => {
+  dispatch({
+    type: actionTypes.SERVER.ERROR,
+    error: params.error,
+  })
+}
+
+
 const onJoinGame = (dispatch, params) => {
   dispatch({
     type: actionTypes.SERVER.ON_JOIN,
@@ -70,6 +78,7 @@ const takeSeat = (client, seatID) => {
 }
 
 export {
+  error,
   joinGame,
   newMessage,
   onJoinGame,

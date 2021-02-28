@@ -69,7 +69,7 @@ func (c *Client) readPump() {
 			}
 			break
 		}
-		c.gameState.ProcessEvent(c, e)
+		ProcessEvent(c, e)
 
 	}
 }

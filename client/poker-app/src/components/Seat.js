@@ -30,6 +30,7 @@ const actionCss = classNames(
   'border',
   'border-gray-900',
   'rounded-full',
+  'shadow-md',
 
   // spacing
   'm-1',
@@ -52,6 +53,7 @@ const takeSeatCss = classNames(
 
   'border-2',
   'rounded-xl',
+  'shadow-md',
 
   // spacing
   'p-1',
@@ -113,8 +115,9 @@ const getInfoCss = (player) => (
       'text-gray-100': !player.isActive,
     },
 
-    'border-2',
+    'border-1',
     'rounded-xl',
+    'shadow-md',
 
     // spacing
     'p-1',
@@ -134,6 +137,7 @@ const getDealerCss = (player) => (
     'border',
     'border-gray-500',
     'rounded-full',
+    'shadow-md',
 
     // spacing
     'm-1',

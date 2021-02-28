@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 import { w3cwebsocket} from "websocket"
 
 import {
+  error,
   onJoinGame,
   onTakeSeat,
   newMessage,
@@ -31,23 +32,22 @@ const WebSocketProvider = ({ children }) => {
   useEffect(() => {
     const _client = w3cwebsocket(BASE_WS_URL)
     _client.onerror = function() {
-      // TODO: connection error
-      console.log('Connection error')
+      error(dispatch, {error: 'Could not connect to the server.'})
     }
 
     _client.onopen = function() {
-      // TODO: client connected
       console.log('WebSocket client connected')
     }
 
     _client.onclose = function() {
-      // TODO: client closed
-      console.log('WebSocket client closed')
+      error(dispatch, {error: 'Lost connection to the server.'})
     }
 
     _client.onmessage = (payload) => {
       let event = JSON.parse(payload.data)
-      if (event.action === Event.ON_JOIN) {
+      if (event.action === Event.ERROR) {
+        error(dispatch, event.params)
+      } else if (event.action === Event.ON_JOIN) {
         onJoinGame(dispatch, event.params)
       } else if (event.action === Event.ON_TAKE_SEAT) {
         onTakeSeat(dispatch, event.params)
@@ -56,7 +56,7 @@ const WebSocketProvider = ({ children }) => {
       } else if (event.action === Event.UPDATE_GAME) {
         updateGame(dispatch, event.params)
       } else {
-        // TODO: Handle unknown message
+        error(dispatch, {error: 'Unknown message received.'})
       }
     }
     setClient(_client)

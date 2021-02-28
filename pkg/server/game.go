@@ -73,41 +73,41 @@ type GameState struct {
 }
 
 // ProcessEvent process event
-func (g *GameState) ProcessEvent(c *Client, e Event) {
+func ProcessEvent(c *Client, e Event) {
 	var err error
 
 	if e.Action == actionJoin {
-		err = g.HandleJoin(c, e.Params["username"].(string))
+		err = HandleJoin(c, e.Params["username"].(string))
 	} else if e.Action == actionSendMessage {
-		err = g.HandleSendMessage(c, e.Params["username"].(string), e.Params["message"].(string))
+		err = HandleSendMessage(c, e.Params["username"].(string), e.Params["message"].(string))
 	} else if e.Action == actionTakeSeat {
-		err = g.HandleTakeSeat(c, e.Params["seatID"].(string))
+		err = HandleTakeSeat(c, e.Params["seatID"].(string))
 	} else if e.Action == actionFold {
-		err = g.HandleFold(c)
+		err = HandleFold(c)
 	} else if e.Action == actionCheck {
-		err = g.HandleCheck(c)
+		err = HandleCheck(c)
 	} else if e.Action == actionCall {
-		err = g.HandleCall(c)
+		err = HandleCall(c)
 	} else if e.Action == actionRaise {
 		raiseAmount := int(e.Params["value"].(float64))
-		err = g.HandleRaise(c, raiseAmount)
+		err = HandleRaise(c, raiseAmount)
 	} else {
 		err = fmt.Errorf("Unknown action encountered: %s", e.Action)
 	}
 
 	if err != nil {
-		g.HandlePlayerError(c, err)
+		HandlePlayerError(c, err)
 	}
 }
 
 // HandlePlayerError handles player error (not system error)
-func (g *GameState) HandlePlayerError(c *Client, err error) error {
+func HandlePlayerError(c *Client, err error) error {
 	c.send <- createErrorEvent(c.id, err)
 	return nil
 }
 
 // HandleJoin handles join event
-func (g *GameState) HandleJoin(c *Client, username string) error {
+func HandleJoin(c *Client, username string) error {
 	c.username = username
 	c.send <- createOnJoinEvent(c.id, c.username)
 	c.hub.broadcast <- createNewMessageEvent(
@@ -115,23 +115,23 @@ func (g *GameState) HandleJoin(c *Client, username string) error {
 		systemUsername,
 		fmt.Sprintf("%s joined the game.", c.username),
 	)
-	c.send <- createUpdateGameEvent(c.id, g)
+	c.send <- createUpdateGameEvent(c)
 	return nil
 }
 
 // HandleSendMessage handles send message event
-func (g *GameState) HandleSendMessage(c *Client, username string, message string) error {
+func HandleSendMessage(c *Client, username string, message string) error {
 	c.hub.broadcast <- createNewMessageEvent(c.id, username, message)
 	return nil
 }
 
 // HandleTakeSeat takes a seat for the user
-func (g *GameState) HandleTakeSeat(c *Client, seatID string) error {
+func HandleTakeSeat(c *Client, seatID string) error {
 	if c.seatID != "" {
 		return fmt.Errorf("You can only sit at one seat")
 	}
 
-	seat := g.Table.Seats
+	seat := c.gameState.Table.Seats
 
 	var selectedPlayer *poker.Player
 	for i := 0; i < seat.Len(); i++ {
@@ -159,119 +159,128 @@ func (g *GameState) HandleTakeSeat(c *Client, seatID string) error {
 	c.send <- createOnTakeSeatEvent(c.id, seatID)
 
 	// Try to start a new game if one hasn't started yet.
-	if g.Stage == Waiting {
-		g.StartNewHand()
+	if c.gameState.Stage == Waiting {
+		StartNewHand(c.gameState)
 	}
 
-	c.hub.broadcast <- createUpdateGameEvent(c.id, g)
+	c.hub.broadcast <- createUpdateGameEvent(c)
 	return nil
 }
 
 // HandleFold folds
-func (g *GameState) HandleFold(c *Client) error {
-	err := g.CurrentSeat.Player.Fold()
+func HandleFold(c *Client) error {
+	err := c.gameState.CurrentSeat.Player.Fold()
 	if err != nil {
 		return err
 	}
 	c.hub.broadcast <- createNewMessageEvent(
 		c.id,
 		systemUsername,
-		fmt.Sprintf("%s folds.", g.CurrentSeat.Player.Name),
+		fmt.Sprintf("%s folds.", c.gameState.CurrentSeat.Player.Name),
 	)
-	return g.GoToNextGameState(c)
+	return GoToNextGameState(c)
 }
 
 // HandleCheck checks
-func (g *GameState) HandleCheck(c *Client) error {
-	err := g.CurrentSeat.Player.Check(g.BettingRound)
+func HandleCheck(c *Client) error {
+	err := c.gameState.CurrentSeat.Player.Check(c.gameState.BettingRound)
 	if err != nil {
 		return err
 	}
 	c.hub.broadcast <- createNewMessageEvent(
 		c.id,
 		systemUsername,
-		fmt.Sprintf("%s checks.", g.CurrentSeat.Player.Name),
+		fmt.Sprintf("%s checks.", c.gameState.CurrentSeat.Player.Name),
 	)
-	return g.GoToNextGameState(c)
+	return GoToNextGameState(c)
 }
 
 // HandleCall calls
-func (g *GameState) HandleCall(c *Client) error {
-	err := g.CurrentSeat.Player.Call(&g.Table, g.BettingRound)
+func HandleCall(c *Client) error {
+	err := c.gameState.CurrentSeat.Player.Call(&c.gameState.Table, c.gameState.BettingRound)
 	if err != nil {
 		return err
 	}
 	c.hub.broadcast <- createNewMessageEvent(
 		c.id,
 		systemUsername,
-		fmt.Sprintf("%s calls.", g.CurrentSeat.Player.Name),
+		fmt.Sprintf("%s calls.", c.gameState.CurrentSeat.Player.Name),
 	)
-	return g.GoToNextGameState(c)
+	return GoToNextGameState(c)
 }
 
 // HandleRaise raises/bets
-func (g *GameState) HandleRaise(c *Client, raiseAmount int) error {
-	err := g.CurrentSeat.Player.Raise(&g.Table, g.BettingRound, raiseAmount)
+func HandleRaise(c *Client, raiseAmount int) error {
+	err := c.gameState.CurrentSeat.Player.Raise(&c.gameState.Table, c.gameState.BettingRound, raiseAmount)
 	if err != nil {
 		return err
 	}
 	c.hub.broadcast <- createNewMessageEvent(
 		c.id,
 		systemUsername,
-		fmt.Sprintf("%s raises to %d.", g.CurrentSeat.Player.Name, raiseAmount),
+		fmt.Sprintf("%s raises to %d.", c.gameState.CurrentSeat.Player.Name, raiseAmount),
 	)
-	return g.GoToNextGameState(c)
+	return GoToNextGameState(c)
 }
 
 // GoToNextGameState moves to the next game state
-func (g *GameState) GoToNextGameState(c *Client) error {
+func GoToNextGameState(c *Client) error {
 	for {
-		err := c.gameState.NextGameState(c)
+		err := NextGameState(c)
 		if err != nil {
 			return err
+		}
+		if c.gameState.Stage == Waiting {
+			break
 		}
 		if c.gameState.CurrentSeat.Player.Status == poker.PlayerActive && c.gameState.CurrentSeat.Player.Chips > 0 {
 			break
 		}
 	}
-	c.hub.broadcast <- createUpdateGameEvent(c.id, g)
+	c.hub.broadcast <- createUpdateGameEvent(c)
 	return nil
 }
 
 // NextGameState gets the next game state
-func (g *GameState) NextGameState(c *Client) error {
+func NextGameState(c *Client) error {
 	var err error
 
-	g.CurrentSeat, err = poker.GetNextActiveSeat(g.CurrentSeat)
-	if err != nil {
-		return err
+	g := c.gameState
+
+	nextSeat := g.CurrentSeat.Next()
+	for i := 0; i < g.CurrentSeat.Len(); i++ {
+		if nextSeat == g.CurrentSeat {
+			return fmt.Errorf("Next active seat not found. All players have folded")
+		}
+		if nextSeat.Player.Status != poker.PlayerActive {
+			continue
+		}
+		if nextSeat.Player.HasFolded == false || nextSeat.Player.Chips == 0 {
+			break
+		}
+		if nextSeat.Player == g.BettingRound.Raiser {
+			break
+		}
+		nextSeat = nextSeat.Next()
 	}
+
+	g.CurrentSeat = nextSeat
 
 	everyoneHasFolded := poker.HasEveryoneFolded(g.CurrentSeat)
 
-	if everyoneHasFolded {
-		c.hub.broadcast <- createNewMessageEvent(
-			c.id,
-			systemUsername,
-			fmt.Sprintf("%s won the hand.", g.CurrentSeat.Player.Name),
-		)
-		g.Table.AwardPot(g.CurrentSeat.Player)
-		g.StartNewHand()
-		c.hub.broadcast <- createNewMessageEvent(c.id, systemUsername, "Starting new hand.")
-		return nil
-	}
+	/*
+		everyoneAllInOrFolded := poker.HasEveryoneFoldedOrIsAllIn(g.CurrentSeat)
 
-	everyoneAllInOrFolded := poker.HasEveryoneFoldedOrIsAllIn(g.CurrentSeat)
-
-	if everyoneAllInOrFolded {
-		poker.DealFlop(&g.Deck, &g.Table)
-		poker.DealTurn(&g.Deck, &g.Table)
-		poker.DealRiver(&g.Deck, &g.Table)
-		g.DetermineWinners(c)
-		g.StartNewHand()
-		c.hub.broadcast <- createNewMessageEvent(c.id, systemUsername, "Starting new hand.")
-		return nil
-	}
+		if everyoneAllInOrFolded {
+			poker.DealFlop(&g.Deck, &g.Table)
+			poker.DealTurn(&g.Deck, &g.Table)
+			poker.DealRiver(&g.Deck, &g.Table)
+			DetermineWinners(c)
+			StartNewHand(g)
+			c.hub.broadcast <- createNewMessageEvent(c.id, systemUsername, "Starting new hand.")
+			return nil
+		}
+	*/
 
 	if g.CurrentSeat.Player == g.BettingRound.Raiser {
 		g.Stage++
@@ -309,19 +318,31 @@ func (g *GameState) NextGameState(c *Client) error {
 			}
 			c.hub.broadcast <- createNewMessageEvent(c.id, systemUsername, "Dealing river.")
 		} else if g.Stage == Showdown {
-			g.DetermineWinners(c)
-			g.StartNewHand()
+			DetermineWinners(c)
+			StartNewHand(g)
 			c.hub.broadcast <- createNewMessageEvent(c.id, systemUsername, "Starting new hand.")
 		} else {
 			return fmt.Errorf("Invalid game stage encountered: %s", g.Stage.String())
 		}
+	} else if everyoneHasFolded {
+		c.hub.broadcast <- createNewMessageEvent(
+			c.id,
+			systemUsername,
+			fmt.Sprintf("%s won the hand.", g.CurrentSeat.Player.Name),
+		)
+		g.Table.AwardPot(g.CurrentSeat.Player)
+		StartNewHand(g)
+		c.hub.broadcast <- createNewMessageEvent(c.id, systemUsername, "Starting new hand.")
+		return nil
 	}
 
 	return nil
 }
 
 // DetermineWinners determines who won the hand and awards chips to the winner
-func (g *GameState) DetermineWinners(c *Client) {
+func DetermineWinners(c *Client) {
+	g := c.gameState
+
 	allWinningHands := g.Table.DetermineWinners()
 	for i, winningHandsByPot := range allWinningHands {
 		potText := "main pot"
@@ -374,7 +395,7 @@ func NewGameState() *GameState {
 }
 
 // StartNewHand starts a new hand
-func (g *GameState) StartNewHand() {
+func StartNewHand(g *GameState) {
 	deck := poker.NewDeck()
 	seats := g.Table.Seats
 
@@ -388,7 +409,7 @@ func (g *GameState) StartNewHand() {
 	// Get active players for the next game
 	for i := 0; i < seats.Len(); i++ {
 		if seats.Player.Status > poker.PlayerVacated {
-			if seats.Player.Chips == 0 {
+			if seats.Player.Chips < defaultMinBet {
 				seats.Player.Status = poker.PlayerSittingOut
 			} else {
 				seats.Player.Status = poker.PlayerActive
@@ -406,6 +427,12 @@ func (g *GameState) StartNewHand() {
 				seats.Player.Status = poker.PlayerSittingOut
 			}
 			seats = seats.Next()
+		}
+		g.Stage = Waiting
+		g.Table = poker.Table{
+			MinBet: defaultMinBet,
+			Pot:    poker.NewPot(),
+			Seats:  seats,
 		}
 		return
 	}
@@ -490,8 +517,10 @@ func createOnTakeSeatEvent(userID string, seatID string) UserEvent {
 	}
 }
 
-func createUpdateGameEvent(userID string, g *GameState) UserEvent {
+func createUpdateGameEvent(c *Client) UserEvent {
 	var actionBar map[string]interface{}
+
+	g := c.gameState
 
 	players := make([]map[string]interface{}, 0)
 	seats := g.Table.Seats
@@ -543,7 +572,7 @@ func createUpdateGameEvent(userID string, g *GameState) UserEvent {
 		// Actions data
 		callRemainingAmount := g.BettingRound.CallAmount - g.BettingRound.Bets[activePlayer.ID]
 		actionBar = map[string]interface{}{
-			"actions":        g.GetActions(),
+			"actions":        GetActions(g),
 			"callAmount":     g.BettingRound.CallAmount,
 			"chipsInPot":     g.BettingRound.Bets[activePlayer.ID],
 			"maxRaiseAmount": activePlayer.Chips - callRemainingAmount,
@@ -561,7 +590,7 @@ func createUpdateGameEvent(userID string, g *GameState) UserEvent {
 	}
 
 	return UserEvent{
-		UserID: userID,
+		UserID: c.id,
 		Event: Event{
 			Action: actionUpdateGame,
 			Params: map[string]interface{}{
@@ -575,7 +604,7 @@ func createUpdateGameEvent(userID string, g *GameState) UserEvent {
 }
 
 // GetActions gets the actions available to active player
-func (g *GameState) GetActions() []string {
+func GetActions(g *GameState) []string {
 	var actions []string
 
 	if g.CurrentSeat.Player.CanFold(g.BettingRound) {

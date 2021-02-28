@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react'
 import AppPropTypes from '../AppPropTypes'
 import { Event } from '../enums'
 
-const cssButton = classNames(
+const buttonCss = classNames(
   'flex-1',
 
   'bg-blue-600',
@@ -23,7 +23,7 @@ const cssButton = classNames(
   'text-white',
 )
 
-const cssRaiseWrap = classNames(
+const raiseWrapCss = classNames(
   'flex',
   'flex-col',
   'flex-1',
@@ -50,7 +50,15 @@ const ActionBar = ({ actions, callAmount, chipsInPot, maxRaiseAmount, minRaiseAm
 
   const onRaiseByAmount = (e) => {
     const value = parseInt(e.target.value)
-    if (value) {
+    console.log(value)
+    if (callAmount + value < minRaiseAmount &&  callAmount + value <= totalChips) {
+      setRaiseByAmount(totalChips - callAmount)
+    }
+    if (value < minRaiseAmount) {
+      return
+    }
+
+    if (value && callAmount + value <= totalChips) {
       setRaiseByAmount(value)
     }
   }
@@ -65,13 +73,16 @@ const ActionBar = ({ actions, callAmount, chipsInPot, maxRaiseAmount, minRaiseAm
 
   let raiseToAmountText = `ℝ${raiseToAmount}`
 
-  if (raiseByAmount === maxRaiseAmount) {
+  if (raiseByAmount === maxRaiseAmount || raiseToAmount > totalChips) {
     raiseToAmountText = 'ALL IN'
   }
+
+  const showRaiseSlider = actions.includes(Event.RAISE) && callAmount + minRaiseAmount < totalChips
+
   const actionButtons = actions.map(action => {
     if (action === Event.FOLD) {
       return (
-        <button key={action} className={cssButton} onClick={() => onAction(action)}>
+        <button key={action} className={buttonCss} onClick={() => onAction(action)}>
           {action.toUpperCase()}
         </button>
       )
@@ -79,7 +90,7 @@ const ActionBar = ({ actions, callAmount, chipsInPot, maxRaiseAmount, minRaiseAm
 
     if (action === Event.CHECK) {
       return (
-        <button key={action} className={cssButton} onClick={() => onAction(action)}>
+        <button key={action} className={buttonCss} onClick={() => onAction(action)}>
           {action.toUpperCase()}
         </button>
       )
@@ -87,14 +98,14 @@ const ActionBar = ({ actions, callAmount, chipsInPot, maxRaiseAmount, minRaiseAm
 
     if (action === Event.CALL) {
       return (
-        <button key={action} className={cssButton} onClick={() => onAction(action)}>
+        <button key={action} className={buttonCss} onClick={() => onAction(action)}>
           {action.toUpperCase()}<br />{callRemainingText}
         </button>
       )
     }
 
     return (
-      <button key={action} className={cssButton} onClick={() => onAction(action, {value: raiseToAmount})}>
+      <button key={action} className={buttonCss} onClick={() => onAction(action, {value: raiseToAmount})}>
         RAISE TO<br />{raiseToAmountText}
       </button>
     )
@@ -103,24 +114,26 @@ const ActionBar = ({ actions, callAmount, chipsInPot, maxRaiseAmount, minRaiseAm
   return (
     <div className="flex bg-gray-800">
       {actionButtons}
-      <div className={cssRaiseWrap}>
-        <input
-          type="range"
-          min={minRaiseAmount}
-          max={maxRaiseAmount}
-          onChange={(e) => onRaiseByAmount(e)}
-          value={raiseByAmount}
-        />
-        <input
-          type="number"
-          className="text-center border"
-          min={minRaiseAmount}
-          max={maxRaiseAmount}
-          placeholder={minRaiseAmount}
-          onChange={(e) => onRaiseByAmount(e)}
-          value={raiseByAmount}
-        />
-      </div>
+      {showRaiseSlider &&
+        <div className={raiseWrapCss}>
+          <input
+            type="range"
+            min={minRaiseAmount}
+            max={maxRaiseAmount}
+            onChange={(e) => onRaiseByAmount(e)}
+            value={raiseByAmount}
+          />
+          <input
+            type="number"
+            className="text-center border"
+            min={minRaiseAmount}
+            max={maxRaiseAmount}
+            placeholder={minRaiseAmount}
+            onChange={(e) => onRaiseByAmount(e)}
+            value={raiseByAmount}
+          />
+        </div>
+      }
     </div>
   )
 }

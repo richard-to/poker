@@ -21,6 +21,7 @@ const initialState = {
   seatID: null,
   userID: null,
   username: null,
+  error: null,
 }
 
 const appStore = createContext(initialState)
@@ -36,22 +37,27 @@ const AppStateProvider = ({ children }) => {
             messages: update(state.chat.messages, {$push: [action.message]})
           },
         }
+      case actionTypes.SERVER.ERROR:
+        return {
+          ...state,
+          error: action.error,
+        }
       case actionTypes.SERVER.ON_JOIN:
         return {
           ...state,
           userID: action.userID,
           username: action.username,
         }
-        case actionTypes.SERVER.ON_TAKE_SEAT:
-          return {
-            ...state,
-            seatID: action.seatID,
-          }
-        case actionTypes.GAME.UPDATE:
-          return {
-            ...state,
-            gameState: action.gameState,
-          }
+      case actionTypes.SERVER.ON_TAKE_SEAT:
+        return {
+          ...state,
+          seatID: action.seatID,
+        }
+      case actionTypes.GAME.UPDATE:
+        return {
+          ...state,
+          gameState: action.gameState,
+        }
       default:
         throw new Error()
     }

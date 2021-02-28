@@ -8,6 +8,7 @@ export const PlayerLocation = deepFreeze({
 export const Event = deepFreeze({
   CALL: 'call',
   CHECK: 'check',
+  ERROR: 'error',
   FOLD: 'fold',
   JOIN: 'join',
   NEW_MESSAGE: 'new-message',
