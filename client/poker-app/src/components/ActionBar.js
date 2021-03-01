@@ -41,19 +41,58 @@ const raiseWrapCss = classNames(
   'text-gray-900',
 )
 
+const getRaiseInputCss = (error) => (
+  classNames(
+    {
+      'border-black': !error,
+      'focus:ring-blue-600': !error,
+      'text-black': !error,
+    },
+    {
+      'border-red-500': error,
+      'focus:ring-red-400': error,
+      'text-red-500': error,
+    },
+
+    'border',
+
+    // focus
+    'focus:outline-none',
+    'focus:ring-2',
+
+    // text
+    'text-center',
+  )
+)
+
 const ActionBar = ({ actions, callAmount, chipsInPot, maxRaiseAmount, minRaiseAmount, onAction, totalChips }) => {
+  const [raiseInputError, setRaiseInputError] = useState(false)
+  const [raiseInput, setRaiseInput] = useState(minRaiseAmount)
   const [raiseByAmount, setRaiseByAmount] = useState(minRaiseAmount)
 
   useEffect(() => {
     setRaiseByAmount(minRaiseAmount)
+    setRaiseInput(minRaiseAmount)
+    setRaiseInputError(false)
   }, [minRaiseAmount])
 
+  const onRaiseInputEntered = (e) => {
+    if ((e.type === 'keyup' && e.code === 'Enter') || e.type === 'blur') {
+      onRaiseByAmount(e)
+    }
+  }
   const onRaiseByAmount = (e) => {
     const value = parseInt(e.target.value)
     if (value > maxRaiseAmount) {
       setRaiseByAmount(maxRaiseAmount)
+      setRaiseInput(maxRaiseAmount)
+      setRaiseInputError(false)
     } else if (value >= minRaiseAmount) {
       setRaiseByAmount(value)
+      setRaiseInput(value)
+      setRaiseInputError(false)
+    } else {
+      setRaiseInputError(true)
     }
   }
 
@@ -112,7 +151,9 @@ const ActionBar = ({ actions, callAmount, chipsInPot, maxRaiseAmount, minRaiseAm
       {showRaiseSlider &&
         <div className={raiseWrapCss}>
           <input
+            className="mb-2"
             type="range"
+            list="bet-options"
             min={minRaiseAmount}
             max={maxRaiseAmount}
             onChange={(e) => onRaiseByAmount(e)}
@@ -120,13 +161,21 @@ const ActionBar = ({ actions, callAmount, chipsInPot, maxRaiseAmount, minRaiseAm
           />
           <input
             type="number"
-            className="text-center border"
+            className={getRaiseInputCss(raiseInputError)}
             min={minRaiseAmount}
             max={maxRaiseAmount}
+            onBlur={(e) => onRaiseInputEntered(e)}
+            onChange={(e) => setRaiseInput(e.target.value)}
+            onKeyUp={(e) => onRaiseInputEntered(e)}
             placeholder={minRaiseAmount}
-            onChange={(e) => onRaiseByAmount(e)}
-            value={raiseByAmount}
+            value={raiseInput}
           />
+          <datalist id="bet-options">
+            <option value={minRaiseAmount} />
+            <option value={8} />
+            <option value={16} />
+            <option value={maxRaiseAmount} />
+          </datalist>
         </div>
       }
     </div>
