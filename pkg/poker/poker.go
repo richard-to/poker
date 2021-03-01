@@ -353,26 +353,45 @@ func CountSeatsByPlayerStatus(seat *Seat, status PlayerStatus) int {
 	return statusCount
 }
 
-// HasEveryoneFolded checks if everyone except the current player has folded
-func HasEveryoneFolded(currentSeat *Seat) bool {
-	nextSeat := currentSeat.Next()
-	for i := 0; i < nextSeat.Len()-1; i++ {
-		if nextSeat.Player.Status == PlayerActive && nextSeat.Player.HasFolded == false {
-			return false
-		}
-		nextSeat = nextSeat.Next()
-	}
-	return true
-}
-
-// HasEveryoneFoldedOrIsAllIn checks if everyone except the current player has folded or is all in
-func HasEveryoneFoldedOrIsAllIn(currentSeat *Seat) bool {
+// DetermineWinnerByFold checks if a player has won the hand by making everyone fold
+func DetermineWinnerByFold(currentSeat *Seat) *Player {
+	var activePlayer *Player
 	nextSeat := currentSeat.Next()
 	for i := 0; i < nextSeat.Len(); i++ {
-		if nextSeat.Player.Status == PlayerActive && (nextSeat.Player.HasFolded == false && nextSeat.Player.Chips > 0) {
-			return false
+		if nextSeat.Player.Status == PlayerActive && nextSeat.Player.HasFolded == false {
+			if activePlayer == nil {
+				activePlayer = nextSeat.Player
+			} else {
+				return nil
+			}
 		}
 		nextSeat = nextSeat.Next()
 	}
-	return true
+	return activePlayer
+}
+
+// SkipToShowdown checks if we should skip to the showdown.
+//
+// Scenarios:
+//   - At least two players are all in and everyone else has folded
+//   - One player still has chips and at least one other person is all in and everyone else has folded
+func SkipToShowdown(currentSeat *Seat) bool {
+	activePlayers := 0
+	allInPlayers := 0
+
+	nextSeat := currentSeat.Next()
+	for i := 0; i < nextSeat.Len(); i++ {
+		// Skip vacant seats, players who are sitting out, and players who have folded
+		if nextSeat.Player.Status == PlayerActive && nextSeat.Player.HasFolded == false {
+			// An active player still has chips and an all in player has no more chips
+			if nextSeat.Player.Chips > 0 {
+				activePlayers++
+			} else {
+				allInPlayers++
+			}
+		}
+		nextSeat = nextSeat.Next()
+	}
+
+	return (activePlayers == 1 && allInPlayers >= 1) || (activePlayers == 0 && allInPlayers >= 2)
 }

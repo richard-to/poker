@@ -225,6 +225,7 @@ func HandleRaise(c *Client, raiseAmount int) error {
 
 // GoToNextGameState moves to the next game state
 func GoToNextGameState(c *Client) error {
+	// TODO: Check if this loop is needed still
 	for {
 		err := NextGameState(c)
 		if err != nil {
@@ -266,24 +267,37 @@ func NextGameState(c *Client) error {
 
 	g.CurrentSeat = nextSeat
 
-	everyoneHasFolded := poker.HasEveryoneFolded(g.CurrentSeat)
+	winnerByFold := poker.DetermineWinnerByFold(g.CurrentSeat)
 
-	/*
-		everyoneAllInOrFolded := poker.HasEveryoneFoldedOrIsAllIn(g.CurrentSeat)
-
-		if everyoneAllInOrFolded {
-			poker.DealFlop(&g.Deck, &g.Table)
-			poker.DealTurn(&g.Deck, &g.Table)
-			poker.DealRiver(&g.Deck, &g.Table)
-			DetermineWinners(c)
-			StartNewHand(g)
-			c.hub.broadcast <- createNewMessageEvent(c.id, systemUsername, "Starting new hand.")
-			return nil
-		}
-	*/
+	if winnerByFold != nil {
+		c.hub.broadcast <- createNewMessageEvent(
+			c.id,
+			systemUsername,
+			fmt.Sprintf("%s won the hand.", winnerByFold.Name),
+		)
+		g.Table.AwardPot(winnerByFold)
+		StartNewHand(g)
+		c.hub.broadcast <- createNewMessageEvent(c.id, systemUsername, "Starting new hand.")
+		return nil
+	}
 
 	if g.CurrentSeat.Player == g.BettingRound.Raiser {
 		g.Stage++
+
+		skipToShowdown := poker.SkipToShowdown(g.CurrentSeat)
+		if skipToShowdown {
+			if g.Stage < Turn {
+				poker.DealFlop(&g.Deck, &g.Table)
+			}
+			if g.Stage < River {
+				poker.DealTurn(&g.Deck, &g.Table)
+			}
+			if g.Stage < Showdown {
+				poker.DealRiver(&g.Deck, &g.Table)
+			}
+			g.Stage = Showdown
+		}
+
 		if g.Stage == Flop {
 			poker.DealFlop(&g.Deck, &g.Table)
 			g.CurrentSeat, err = poker.GetNextActiveSeat(g.Table.Dealer)
@@ -324,16 +338,6 @@ func NextGameState(c *Client) error {
 		} else {
 			return fmt.Errorf("Invalid game stage encountered: %s", g.Stage.String())
 		}
-	} else if everyoneHasFolded {
-		c.hub.broadcast <- createNewMessageEvent(
-			c.id,
-			systemUsername,
-			fmt.Sprintf("%s won the hand.", g.CurrentSeat.Player.Name),
-		)
-		g.Table.AwardPot(g.CurrentSeat.Player)
-		StartNewHand(g)
-		c.hub.broadcast <- createNewMessageEvent(c.id, systemUsername, "Starting new hand.")
-		return nil
 	}
 
 	return nil
@@ -645,7 +649,7 @@ func createErrorEvent(userID string, err error) UserEvent {
 		Event: Event{
 			Action: actionError,
 			Params: map[string]interface{}{
-				"error": err,
+				"error": err.Error(),
 			},
 		},
 	}
