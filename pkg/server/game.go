@@ -169,7 +169,7 @@ func HandleTakeSeat(c *Client, seatID string) error {
 
 // HandleFold folds
 func HandleFold(c *Client) error {
-	err := c.gameState.CurrentSeat.Player.Fold()
+	err := c.gameState.CurrentSeat.Player.Fold(c.gameState.BettingRound)
 	if err != nil {
 		return err
 	}
@@ -211,14 +211,22 @@ func HandleCall(c *Client) error {
 
 // HandleRaise raises/bets
 func HandleRaise(c *Client, raiseAmount int) error {
+	// Determine whether we're betting or raising. A bet can be determined if call amount is 0,
+	// which means no one has bet anything yet.
+	actionLabel := "bets"
+	if c.gameState.BettingRound.CallAmount > 0 {
+		actionLabel = "raises to"
+	}
+
 	err := c.gameState.CurrentSeat.Player.Raise(&c.gameState.Table, c.gameState.BettingRound, raiseAmount)
 	if err != nil {
 		return err
 	}
+
 	c.hub.broadcast <- createNewMessageEvent(
 		c.id,
 		systemUsername,
-		fmt.Sprintf("%s raises to %d.", c.gameState.CurrentSeat.Player.Name, raiseAmount),
+		fmt.Sprintf("%s %s ℝ%d.", c.gameState.CurrentSeat.Player.Name, actionLabel, raiseAmount),
 	)
 	return GoToNextGameState(c)
 }
@@ -574,13 +582,29 @@ func createUpdateGameEvent(c *Client) UserEvent {
 		}
 
 		// Actions data
+
+		// If the player does not have enough chips to meet the call amount, then set the max raise
+		// to the player's remaining chips/
 		callRemainingAmount := g.BettingRound.CallAmount - g.BettingRound.Bets[activePlayer.ID]
+		maxRaiseAmount := activePlayer.Chips - callRemainingAmount
+		if maxRaiseAmount < 0 {
+			maxRaiseAmount = activePlayer.Chips
+		}
+
+		// If the min raise amount is less than the max raise amount, then use the max raise
+		// as the min raise. Essentially this means that the play must go all in if they were
+		// to raise.
+		minRaiseAmount := g.BettingRound.RaiseByAmount
+		if minRaiseAmount > maxRaiseAmount {
+			minRaiseAmount = maxRaiseAmount
+		}
+
 		actionBar = map[string]interface{}{
 			"actions":        GetActions(g),
 			"callAmount":     g.BettingRound.CallAmount,
 			"chipsInPot":     g.BettingRound.Bets[activePlayer.ID],
-			"maxRaiseAmount": activePlayer.Chips - callRemainingAmount,
-			"minRaiseAmount": g.BettingRound.RaiseByAmount,
+			"maxRaiseAmount": maxRaiseAmount,
+			"minRaiseAmount": minRaiseAmount,
 			"totalChips":     activePlayer.Chips,
 		}
 	}

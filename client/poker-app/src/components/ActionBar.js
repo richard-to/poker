@@ -50,34 +50,29 @@ const ActionBar = ({ actions, callAmount, chipsInPot, maxRaiseAmount, minRaiseAm
 
   const onRaiseByAmount = (e) => {
     const value = parseInt(e.target.value)
-    console.log(value)
-    if (callAmount + value < minRaiseAmount &&  callAmount + value <= totalChips) {
-      setRaiseByAmount(totalChips - callAmount)
-    }
-    if (value < minRaiseAmount) {
-      return
-    }
-
-    if (value && callAmount + value <= totalChips) {
+    if (value > maxRaiseAmount) {
+      setRaiseByAmount(maxRaiseAmount)
+    } else if (value >= minRaiseAmount) {
       setRaiseByAmount(value)
     }
   }
 
   const raiseToAmount = callAmount + raiseByAmount
-  let callRemaining = callAmount - chipsInPot
+  const callRemaining = callAmount - chipsInPot
 
-  let callRemainingText = `ℝ${callRemaining}`
+  let callRemainingLabel = `ℝ${callRemaining}`
   if (callRemaining >= totalChips) {
-    callRemainingText = 'ALL IN'
+    callRemainingLabel = 'ALL IN'
   }
 
-  let raiseToAmountText = `ℝ${raiseToAmount}`
-
-  if (raiseByAmount === maxRaiseAmount || raiseToAmount > totalChips) {
-    raiseToAmountText = 'ALL IN'
+  let raiseToAmountLabel = `ℝ${raiseToAmount}`
+  if (raiseByAmount === maxRaiseAmount || callRemaining + raiseByAmount > totalChips) {
+    raiseToAmountLabel = 'ALL IN'
   }
 
-  const showRaiseSlider = actions.includes(Event.RAISE) && callAmount + minRaiseAmount < totalChips
+  const raiseLabel = callAmount === 0 ? 'BET' : 'RAISE TO'
+
+  const showRaiseSlider = actions.includes(Event.RAISE) && callRemaining + minRaiseAmount < totalChips
 
   const actionButtons = actions.map(action => {
     if (action === Event.FOLD) {
@@ -99,14 +94,14 @@ const ActionBar = ({ actions, callAmount, chipsInPot, maxRaiseAmount, minRaiseAm
     if (action === Event.CALL) {
       return (
         <button key={action} className={buttonCss} onClick={() => onAction(action)}>
-          {action.toUpperCase()}<br />{callRemainingText}
+          {action.toUpperCase()}<br />{callRemainingLabel}
         </button>
       )
     }
 
     return (
       <button key={action} className={buttonCss} onClick={() => onAction(action, {value: raiseToAmount})}>
-        RAISE TO<br />{raiseToAmountText}
+        {raiseLabel}<br />{raiseToAmountLabel}
       </button>
     )
   })
