@@ -19,60 +19,6 @@ type Table struct {
 	River      *Card
 }
 
-// GetActivePlayers gets active players at the table
-func (t *Table) GetActivePlayers() []*Player {
-	players := make([]*Player, 0)
-	nextSeat := t.SmallBlind
-	for i := 0; i < nextSeat.Len(); i++ {
-		if nextSeat.Player.Status == PlayerActive {
-			players = append(players, nextSeat.Player)
-		}
-		nextSeat = nextSeat.Next()
-	}
-	return players
-}
-
-// AwardPot awards the entire pot to a player. This is used when all players have folded
-// and there is no need to determine the best hand.
-func (t *Table) AwardPot(p *Player) {
-	p.Chips += t.Pot.GetTotal()
-}
-
-// DetermineWinners determines the winners of the hand
-func (t *Table) DetermineWinners() [][]PlayerHand {
-	subPots := t.Pot.GetSidePots()
-	numSubPots := len(subPots)
-	allWinningHands := make([][]PlayerHand, numSubPots)
-
-	// Multiple pots can be created if there are players who are all in with
-	// different chip stacks.
-	for i, subPot := range subPots {
-		winningHands := FindWinningHands(subPot.Players, t)
-
-		// In the case of a tie, divide the pot amongst the winners
-		chipsWon := subPot.Total / len(winningHands)
-		remainderChipsWon := subPot.Total % len(winningHands)
-
-		// If the pot can be split evenly among all winners, then
-		// we will distribute one leftover chip to each player until
-		// there are no more chips
-		for j := range winningHands {
-			playerChipsWon := chipsWon
-			if remainderChipsWon > 0 {
-				remainderChipsWon--
-				playerChipsWon++
-			}
-			// Keep track of the chips won for logging purposes, such as displaying to chat
-			winningHands[j].ChipsWon = playerChipsWon
-			// Award winning chips to player
-			winningHands[j].Player.Chips += playerChipsWon
-		}
-		allWinningHands[i] = winningHands
-	}
-
-	return allWinningHands
-}
-
 // Seat represents a seat at the poker table.
 //
 // - Seat uses ring.Ring under the hood to create a circular list.
@@ -260,7 +206,7 @@ func NewBettingRound(startSeat *Seat, callAmount int, minBetAmount int) (*Bettin
 func DealHands(d *Deck, t *Table) {
 	rounds := 0
 	numRounds := 2
-	activePlayers := t.GetActivePlayers()
+	activePlayers := GetActivePlayers(t)
 	hands := make([][2]*Card, len(activePlayers))
 	for rounds < numRounds {
 		for i := range hands {
@@ -326,6 +272,31 @@ func DealRiver(d *Deck, t *Table) {
 	t.River = card
 }
 
+// GetActivePlayers gets active players at the table
+func GetActivePlayers(t *Table) []*Player {
+	players := make([]*Player, 0)
+	nextSeat := t.SmallBlind
+	for i := 0; i < nextSeat.Len(); i++ {
+		if nextSeat.Player.Status == PlayerActive {
+			players = append(players, nextSeat.Player)
+		}
+		nextSeat = nextSeat.Next()
+	}
+	return players
+}
+
+// CountSeatsByPlayerStatus counts the number of seats by player status
+func CountSeatsByPlayerStatus(seat *Seat, status PlayerStatus) int {
+	statusCount := 0
+	for i := 0; i < seat.Len(); i++ {
+		if seat.Player.Status == status {
+			statusCount++
+		}
+		seat = seat.Next()
+	}
+	return statusCount
+}
+
 // GetNextActiveSeat get next active player who has not folded.
 func GetNextActiveSeat(currentSeat *Seat) (*Seat, error) {
 	nextSeat := currentSeat.Next()
@@ -341,16 +312,39 @@ func GetNextActiveSeat(currentSeat *Seat) (*Seat, error) {
 	return nextSeat, nil
 }
 
-// CountSeatsByPlayerStatus counts the number of seats by player status
-func CountSeatsByPlayerStatus(seat *Seat, status PlayerStatus) int {
-	statusCount := 0
-	for i := 0; i < seat.Len(); i++ {
-		if seat.Player.Status == status {
-			statusCount++
+// DetermineWinners determines the winners of the hand
+func DetermineWinners(t *Table) [][]PlayerHand {
+	subPots := t.Pot.GetSidePots()
+	numSubPots := len(subPots)
+	allWinningHands := make([][]PlayerHand, numSubPots)
+
+	// Multiple pots can be created if there are players who are all in with
+	// different chip stacks.
+	for i, subPot := range subPots {
+		winningHands := FindWinningHands(subPot.Players, t)
+
+		// In the case of a tie, divide the pot amongst the winners
+		chipsWon := subPot.Total / len(winningHands)
+		remainderChipsWon := subPot.Total % len(winningHands)
+
+		// If the pot can be split evenly among all winners, then
+		// we will distribute one leftover chip to each player until
+		// there are no more chips
+		for j := range winningHands {
+			playerChipsWon := chipsWon
+			if remainderChipsWon > 0 {
+				remainderChipsWon--
+				playerChipsWon++
+			}
+			// Keep track of the chips won for logging purposes, such as displaying to chat
+			winningHands[j].ChipsWon = playerChipsWon
+			// Award winning chips to player
+			winningHands[j].Player.Chips += playerChipsWon
 		}
-		seat = seat.Next()
+		allWinningHands[i] = winningHands
 	}
-	return statusCount
+
+	return allWinningHands
 }
 
 // DetermineWinnerByFold checks if a player has won the hand by making everyone fold
@@ -368,6 +362,12 @@ func DetermineWinnerByFold(currentSeat *Seat) *Player {
 		nextSeat = nextSeat.Next()
 	}
 	return activePlayer
+}
+
+// AwardPot awards the entire pot to a player. This is used when all players have folded
+// and there is no need to determine the best hand.
+func AwardPot(t *Table, p *Player) {
+	p.Chips += t.Pot.GetTotal()
 }
 
 // SkipToShowdown checks if we should skip to the showdown.

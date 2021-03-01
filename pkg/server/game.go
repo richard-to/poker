@@ -283,7 +283,7 @@ func NextGameState(c *Client) error {
 			systemUsername,
 			fmt.Sprintf("%s won the hand.", winnerByFold.Name),
 		)
-		g.Table.AwardPot(winnerByFold)
+		poker.AwardPot(&g.Table, winnerByFold)
 		StartNewHand(g)
 		c.hub.broadcast <- createNewMessageEvent(c.id, systemUsername, "Starting new hand.")
 		return nil
@@ -355,7 +355,7 @@ func NextGameState(c *Client) error {
 func DetermineWinners(c *Client) {
 	g := c.gameState
 
-	allWinningHands := g.Table.DetermineWinners()
+	allWinningHands := poker.DetermineWinners(&g.Table)
 	for i, winningHandsByPot := range allWinningHands {
 		potText := "main pot"
 		if i > 0 {
