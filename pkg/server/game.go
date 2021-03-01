@@ -82,17 +82,22 @@ func ProcessEvent(c *Client, e Event) {
 		err = HandleSendMessage(c, e.Params["username"].(string), e.Params["message"].(string))
 	} else if e.Action == actionTakeSeat {
 		err = HandleTakeSeat(c, e.Params["seatID"].(string))
-	} else if e.Action == actionFold {
-		err = HandleFold(c)
-	} else if e.Action == actionCheck {
-		err = HandleCheck(c)
-	} else if e.Action == actionCall {
-		err = HandleCall(c)
-	} else if e.Action == actionRaise {
-		raiseAmount := int(e.Params["value"].(float64))
-		err = HandleRaise(c, raiseAmount)
 	} else {
-		err = fmt.Errorf("Unknown action encountered: %s", e.Action)
+		// The remaining actions are turn dependent. The player can only act if it's their turn.
+		if c.gameState.CurrentSeat.Player.ID != c.seatID {
+			err = fmt.Errorf("You cannot move out of turn")
+		} else if e.Action == actionFold {
+			err = HandleFold(c)
+		} else if e.Action == actionCheck {
+			err = HandleCheck(c)
+		} else if e.Action == actionCall {
+			err = HandleCall(c)
+		} else if e.Action == actionRaise {
+			raiseAmount := int(e.Params["value"].(float64))
+			err = HandleRaise(c, raiseAmount)
+		} else {
+			err = fmt.Errorf("Unknown action encountered: %s", e.Action)
+		}
 	}
 
 	if err != nil {
@@ -605,6 +610,7 @@ func createUpdateGameEvent(c *Client) UserEvent {
 			"chipsInPot":     g.BettingRound.Bets[activePlayer.ID],
 			"maxRaiseAmount": maxRaiseAmount,
 			"minRaiseAmount": minRaiseAmount,
+			"seatID":         activePlayer.ID,
 			"totalChips":     activePlayer.Chips,
 		}
 	}

@@ -68,6 +68,8 @@ const Game = () => {
     return <div className="container-fluid"></div>
   }
 
+  const showActionBar = stage !== Stage.WAITING &&  seatID === gameState.actionBar.seatID
+
   return (
     <div className="container-fluid">
       {error &&
@@ -143,7 +145,7 @@ const Game = () => {
             </div>
 
             <div className="flex-1 flex flex-col-reverse">
-            {stage !== Stage.WAITING && <ActionBar
+            {showActionBar && <ActionBar
                 actions={gameState.actionBar.actions}
                 callAmount={gameState.actionBar.callAmount}
                 chipsInPot={gameState.actionBar.chipsInPot}
