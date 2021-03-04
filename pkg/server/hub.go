@@ -7,10 +7,10 @@ type Hub struct {
 	clients map[string]*Client
 
 	// Inbound messages from the clients.
-	broadcast chan UserEvent
+	broadcast chan Event
 
 	// Send message to a specific client.
-	send chan UserEvent
+	send chan Event
 
 	// Register requests from the clients.
 	register chan *Client
@@ -22,7 +22,7 @@ type Hub struct {
 // NewHub creates a new hub.
 func NewHub() *Hub {
 	return &Hub{
-		broadcast:  make(chan UserEvent),
+		broadcast:  make(chan Event),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		clients:    make(map[string]*Client),
@@ -45,8 +45,8 @@ func (h *Hub) Run() {
 				select {
 				case client.send <- event:
 				default:
-					close(client.send)
 					delete(h.clients, id)
+					close(client.send)
 				}
 			}
 		}

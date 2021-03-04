@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -10,6 +9,7 @@ import (
 )
 
 // General actions
+const actionDisconnect string = "disconnect"
 const actionError string = "error"
 const actionOnJoin string = "on-join"
 const actionOnTakeSeat string = "on-take-seat"
@@ -57,12 +57,6 @@ type Event struct {
 	Params map[string]interface{} `json:"params"`
 }
 
-// UserEvent is an event associated with a user
-type UserEvent struct {
-	UserID string
-	Event
-}
-
 // GameState is the current state of the poker game
 type GameState struct {
 	BettingRound *poker.BettingRound
@@ -70,6 +64,30 @@ type GameState struct {
 	Deck         poker.Deck
 	Stage        GameStage
 	Table        poker.Table
+}
+
+// DisconnectPlayer disconnects player from a client when a client has been disconnected.
+//
+// - When a client is disconnected, we will set the player to be computer controlled
+// - If a hand has not started yet, make the seat available again
+// - If the client is disconnected while it's their turn, the player will auto-fold or check
+// - Not all clients will be sitting at the table
+func DisconnectPlayer(c *Client) {
+	player := poker.GetPlayerByID(&c.gameState.Table, c.seatID)
+	if player != nil {
+		player.IsHuman = false
+		if c.gameState.Stage == Waiting {
+			player.Status = poker.PlayerVacated
+			c.hub.broadcast <- createUpdateGameEvent(c)
+		} else if c.gameState.Stage < Showdown {
+			HandleComputerMove(c)
+		}
+	}
+	c.hub.broadcast <- createNewMessageEvent(
+		c.id,
+		systemUsername,
+		fmt.Sprintf("%s has left the game.", c.username),
+	)
 }
 
 // ProcessEvent process event
@@ -159,6 +177,7 @@ func HandleTakeSeat(c *Client, seatID string) error {
 	selectedPlayer.Name = c.username
 	selectedPlayer.Chips = defaultChips
 	selectedPlayer.Status = poker.PlayerSittingOut
+	selectedPlayer.IsHuman = true
 	c.seatID = selectedPlayer.ID
 
 	c.send <- createOnTakeSeatEvent(c.id, seatID)
@@ -252,7 +271,26 @@ func GoToNextGameState(c *Client) error {
 		}
 	}
 	c.hub.broadcast <- createUpdateGameEvent(c)
+
+	HandleComputerMove(c)
+
 	return nil
+}
+
+// HandleComputerMove makes as move (check/folder) for a player who has been disconnected
+func HandleComputerMove(c *Client) {
+	if c.gameState.Stage == Waiting || c.gameState.Stage == Showdown {
+		return
+	}
+	if c.gameState.CurrentSeat.Player.IsHuman {
+		return
+	}
+
+	if c.gameState.CurrentSeat.Player.CanFold(c.gameState.BettingRound) {
+		HandleFold(c)
+	} else if c.gameState.CurrentSeat.Player.CanCheck(c.gameState.BettingRound) {
+		HandleCheck(c)
+	}
 }
 
 // NextGameState gets the next game state
@@ -392,8 +430,9 @@ func NewGameState() *GameState {
 	seats := poker.NewSeat(numPlayers)
 	for i := 0; i < seats.Len(); i++ {
 		seats.Player = &poker.Player{
-			ID:     strconv.Itoa(i + 1),
-			Status: poker.PlayerVacated,
+			ID:      uuid.New().String(),
+			Status:  poker.PlayerVacated,
+			IsHuman: false,
 		}
 		seats = seats.Next()
 	}
@@ -425,6 +464,13 @@ func StartNewHand(g *GameState) {
 
 	// Get active players for the next game
 	for i := 0; i < seats.Len(); i++ {
+		// If a player is computer controlled, then vacate the seat
+		if seats.Player.IsHuman == false {
+			seats.Player.Name = ""
+			seats.Player.Chips = 0
+			seats.Player.Status = poker.PlayerVacated
+		}
+
 		if seats.Player.Status > poker.PlayerVacated {
 			if seats.Player.Chips < defaultMinBet {
 				seats.Player.Status = poker.PlayerSittingOut
@@ -509,32 +555,26 @@ func StartNewHand(g *GameState) {
 	g.Table = table
 }
 
-func createOnJoinEvent(userID string, username string) UserEvent {
-	return UserEvent{
-		UserID: userID,
-		Event: Event{
-			Action: actionOnJoin,
-			Params: map[string]interface{}{
-				"userID":   userID,
-				"username": username,
-			},
+func createOnJoinEvent(userID string, username string) Event {
+	return Event{
+		Action: actionOnJoin,
+		Params: map[string]interface{}{
+			"userID":   userID,
+			"username": username,
 		},
 	}
 }
 
-func createOnTakeSeatEvent(userID string, seatID string) UserEvent {
-	return UserEvent{
-		UserID: userID,
-		Event: Event{
-			Action: actionOnTakeSeat,
-			Params: map[string]interface{}{
-				"seatID": seatID,
-			},
+func createOnTakeSeatEvent(userID string, seatID string) Event {
+	return Event{
+		Action: actionOnTakeSeat,
+		Params: map[string]interface{}{
+			"seatID": seatID,
 		},
 	}
 }
 
-func createUpdateGameEvent(c *Client) UserEvent {
+func createUpdateGameEvent(c *Client) Event {
 	var actionBar map[string]interface{}
 
 	g := c.gameState
@@ -623,16 +663,13 @@ func createUpdateGameEvent(c *Client) UserEvent {
 		"turn":  g.Table.Turn,
 	}
 
-	return UserEvent{
-		UserID: c.id,
-		Event: Event{
-			Action: actionUpdateGame,
-			Params: map[string]interface{}{
-				"actionBar": actionBar,
-				"players":   players,
-				"stage":     g.Stage.String(),
-				"table":     table,
-			},
+	return Event{
+		Action: actionUpdateGame,
+		Params: map[string]interface{}{
+			"actionBar": actionBar,
+			"players":   players,
+			"stage":     g.Stage.String(),
+			"table":     table,
 		},
 	}
 }
@@ -659,28 +696,22 @@ func GetActions(g *GameState) []string {
 	return actions
 }
 
-func createNewMessageEvent(userID string, username string, message string) UserEvent {
-	return UserEvent{
-		UserID: userID,
-		Event: Event{
-			Action: actionNewMessage,
-			Params: map[string]interface{}{
-				"id":       uuid.New().String(),
-				"message":  message,
-				"username": username,
-			},
+func createNewMessageEvent(userID string, username string, message string) Event {
+	return Event{
+		Action: actionNewMessage,
+		Params: map[string]interface{}{
+			"id":       uuid.New().String(),
+			"message":  message,
+			"username": username,
 		},
 	}
 }
 
-func createErrorEvent(userID string, err error) UserEvent {
-	return UserEvent{
-		UserID: userID,
-		Event: Event{
-			Action: actionError,
-			Params: map[string]interface{}{
-				"error": err.Error(),
-			},
+func createErrorEvent(userID string, err error) Event {
+	return Event{
+		Action: actionError,
+		Params: map[string]interface{}{
+			"error": err.Error(),
 		},
 	}
 }

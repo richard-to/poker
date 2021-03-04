@@ -29,6 +29,7 @@ type Player struct {
 	ID        string
 	Name      string
 	Status    PlayerStatus
+	IsHuman   bool
 }
 
 // PrintHoleCards gets the player's hand in abbreviated format.

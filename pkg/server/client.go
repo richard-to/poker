@@ -36,7 +36,7 @@ type Client struct {
 	id        string
 	gameState *GameState
 	// Buffered channel of outbound messages.
-	send     chan UserEvent
+	send     chan Event
 	username string
 	seatID   string
 }
@@ -50,6 +50,7 @@ func (c *Client) readPump() {
 	// Send unregister event to hub using defer is a good idea since it will run
 	// after the function finishes
 	defer func() {
+		DisconnectPlayer(c)
 		c.hub.unregister <- c
 		c.conn.Close()
 	}()
@@ -125,7 +126,7 @@ func ServeWs(hub *Hub, gameState *GameState, w http.ResponseWriter, r *http.Requ
 		gameState: gameState,
 		hub:       hub,
 		id:        uuid.New().String(),
-		send:      make(chan UserEvent, 256),
+		send:      make(chan Event, 256),
 	}
 
 	// So when the websocket is activated, add/register client to hub

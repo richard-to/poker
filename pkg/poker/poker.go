@@ -272,6 +272,18 @@ func DealRiver(d *Deck, t *Table) {
 	t.River = card
 }
 
+// GetPlayerByID gets a player given an ID
+func GetPlayerByID(t *Table, playerID string) *Player {
+	nextSeat := t.Seats
+	for i := 0; i < nextSeat.Len(); i++ {
+		if nextSeat.Player.ID == playerID {
+			return nextSeat.Player
+		}
+		nextSeat = nextSeat.Next()
+	}
+	return nil
+}
+
 // GetActivePlayers gets active players at the table
 func GetActivePlayers(t *Table) []*Player {
 	players := make([]*Player, 0)
