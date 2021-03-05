@@ -605,6 +605,7 @@ func createUpdateGameEvent(c *Client) Event {
 			"callAmount":     0,
 			"chipsInPot":     0,
 			"maxRaiseAmount": 0,
+			"minBetAmount":   0,
 			"minRaiseAmount": 0,
 			"totalChips":     0,
 		}
@@ -649,6 +650,7 @@ func createUpdateGameEvent(c *Client) Event {
 			"callAmount":     g.BettingRound.CallAmount,
 			"chipsInPot":     g.BettingRound.Bets[activePlayer.ID],
 			"maxRaiseAmount": maxRaiseAmount,
+			"minBetAmount":   g.Table.MinBet,
 			"minRaiseAmount": minRaiseAmount,
 			"seatID":         activePlayer.ID,
 			"totalChips":     activePlayer.Chips,

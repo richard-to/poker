@@ -150,9 +150,12 @@ const Game = () => {
                 callAmount={gameState.actionBar.callAmount}
                 chipsInPot={gameState.actionBar.chipsInPot}
                 maxRaiseAmount={gameState.actionBar.maxRaiseAmount}
+                minBetAmount={gameState.actionBar.minBetAmount}
                 minRaiseAmount={gameState.actionBar.minRaiseAmount}
                 onAction={ws.sendPlayerAction}
+                stage={gameState.stage}
                 totalChips={gameState.actionBar.totalChips}
+                totalPot={gameState.table.pot}
               />
             }
             </div>

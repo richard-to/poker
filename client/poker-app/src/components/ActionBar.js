@@ -4,7 +4,7 @@ import PropTypes from 'prop-types'
 import React, { useState, useEffect } from 'react'
 
 import AppPropTypes from '../AppPropTypes'
-import { Event } from '../enums'
+import { Event, Stage } from '../enums'
 
 const buttonCss = classNames(
   'flex-1',
@@ -65,7 +65,33 @@ const getRaiseInputCss = (error) => (
   )
 )
 
-const ActionBar = ({ actions, callAmount, chipsInPot, maxRaiseAmount, minRaiseAmount, onAction, totalChips }) => {
+const calcBetSizes = (minBetAmount, minRaiseAmount, maxRaiseAmount, stage, totalChips, totalPot) => {
+  const bet3x = minBetAmount * 3
+  if (stage === Stage.PREFLOP && minBetAmount === minRaiseAmount && bet3x < totalChips) {
+    return [minRaiseAmount, bet3x, maxRaiseAmount]
+  }
+  const betSizes = [
+    minRaiseAmount,
+    Math.ceil(totalPot * 0.333),
+    Math.ceil(totalPot * 0.667),
+    totalPot,
+    maxRaiseAmount,
+  ]
+  return betSizes.filter(bet => bet > minBetAmount && bet < totalChips)
+}
+
+const ActionBar = ({
+    actions,
+    callAmount,
+    chipsInPot,
+    maxRaiseAmount,
+    minBetAmount,
+    minRaiseAmount,
+    onAction,
+    stage,
+    totalChips,
+    totalPot,
+}) => {
   const [raiseInputError, setRaiseInputError] = useState(false)
   const [raiseInput, setRaiseInput] = useState(minRaiseAmount)
   const [raiseByAmount, setRaiseByAmount] = useState(minRaiseAmount)
@@ -145,6 +171,10 @@ const ActionBar = ({ actions, callAmount, chipsInPot, maxRaiseAmount, minRaiseAm
     )
   })
 
+
+  const betSizes = calcBetSizes(minBetAmount, minRaiseAmount, maxRaiseAmount, stage, totalChips, totalPot)
+  const betSizeOptions = betSizes.map(betSize => <option key={betSize} value={betSize} />)
+
   return (
     <div className="flex bg-gray-800">
       {actionButtons}
@@ -171,10 +201,7 @@ const ActionBar = ({ actions, callAmount, chipsInPot, maxRaiseAmount, minRaiseAm
             value={raiseInput}
           />
           <datalist id="bet-options">
-            <option value={minRaiseAmount} />
-            <option value={8} />
-            <option value={16} />
-            <option value={maxRaiseAmount} />
+            {betSizeOptions}
           </datalist>
         </div>
       }
@@ -191,9 +218,12 @@ ActionBar.propTypes = {
   callAmount: PropTypes.number.isRequired,
   chipsInPot: PropTypes.number.isRequired,
   maxRaiseAmount: PropTypes.number.isRequired,
+  minBetAmount: PropTypes.number.isRequired,
   minRaiseAmount: PropTypes.number.isRequired,
   onAction: PropTypes.func,
+  stage: AppPropTypes.stage.isRequired,
   totalChips: PropTypes.number.isRequired,
+  totalPot: PropTypes.number.isRequired,
 }
 
 export default ActionBar
