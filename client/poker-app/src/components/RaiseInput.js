@@ -94,7 +94,7 @@ RaiseInput.propTypes = {
   placeholder: PropTypes.string.isRequired,
   raiseSuggestions: PropTypes.arrayOf(PropTypes.shape({
     label: PropTypes.string.isRequired,
-    value: PropTypes.number.isRequired,
+    value: PropTypes.string.isRequired,
   })),
 }
 
