@@ -106,10 +106,15 @@ func DisconnectPlayer(c *Client) {
 			HandleComputerMove(c)
 		}
 	}
-	c.hub.broadcast <- NewBroadcastEvent(createNewMessageEvent(
-		systemUsername,
-		fmt.Sprintf("%s has left the game.", c.username),
-	))
+
+	// If a client does not have a username set, that means they haven't technically
+	// joined the table yet. In that case we don't have to post a message.
+	if c.username != "" {
+		c.hub.broadcast <- NewBroadcastEvent(createNewMessageEvent(
+			systemUsername,
+			fmt.Sprintf("%s has left the game.", c.username),
+		))
+	}
 }
 
 // ProcessEvent process event
