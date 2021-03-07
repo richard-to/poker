@@ -16,7 +16,7 @@ const RaiseInput = ({
   const [error, setError] = useState(false)
   const [value, setValue] = useState('')
   const [suggestions, setSuggestions] = useState([])
-  console.log(error)
+
   const theme = {
     container: 'relative',
     input: classNames(
