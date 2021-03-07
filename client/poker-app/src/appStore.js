@@ -17,11 +17,13 @@ const initialState = {
   chat: {
     messages: [],
   },
+  error: null,
   gameState: null,
+  peers: {},
   seatID: null,
   userID: null,
   username: null,
-  error: null,
+  userStream: null,
 }
 
 const appStore = createContext(initialState)
@@ -52,11 +54,21 @@ const AppStateProvider = ({ children }) => {
         return {
           ...state,
           seatID: action.seatID,
+          userStream: action.userStream,
         }
       case actionTypes.GAME.UPDATE:
         return {
           ...state,
           gameState: action.gameState,
+        }
+      case actionTypes.WEBRTC.NEW_PEER:
+        return {
+          ...state,
+          peers: update(
+            state.peers, {
+              [action.peerID]: {$set: {peer: action.peer, stream: null}},
+            },
+          ),
         }
       default:
         throw new Error()

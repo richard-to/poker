@@ -12,10 +12,13 @@ export const Event = deepFreeze({
   FOLD: 'fold',
   JOIN: 'join',
   NEW_MESSAGE: 'new-message',
+  NEW_PEER: 'new-peer',
   ON_JOIN: 'on-join',
+  ON_RECEIVE_SIGNAL: 'on-receive-signal',
   ON_TAKE_SEAT: 'on-take-seat',
   RAISE: 'raise',
   SEND_MESSAGE: 'send-message',
+  SEND_SIGNAL: 'send-signal',
   TAKE_SEAT: 'take-seat',
   UPDATE_GAME: 'update-game',
 })

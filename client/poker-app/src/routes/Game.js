@@ -20,11 +20,13 @@ const DEFAULT_CARD_DELAY = [
   [null, null],
 ]
 const Game = () => {
+
+
   const ws = useContext(WebSocketContext)
 
   const appContext = useContext(appStore)
   const { appState } = appContext
-  const { chat, error, gameState, seatID } = appState
+  const { chat, error, gameState, seatID, userStream } = appState
 
   const [cardDelay, setCardDelay] = useState(DEFAULT_CARD_DELAY)
   const [newDeal, setNewDeal] = useState(true)
@@ -88,6 +90,7 @@ const Game = () => {
                 location={PlayerLocation.TOP}
                 seatID={seatID}
                 stage={gameState.stage}
+                stream={userStream}
               />
               <Seat
                 dealDelay={cardDelay[1]}
@@ -96,6 +99,7 @@ const Game = () => {
                 location={PlayerLocation.TOP}
                 seatID={seatID}
                 stage={gameState.stage}
+                stream={userStream}
               />
               <Seat
                 dealDelay={cardDelay[2]}
@@ -104,9 +108,9 @@ const Game = () => {
                 location={PlayerLocation.TOP}
                 seatID={seatID}
                 stage={gameState.stage}
+                stream={userStream}
               />
             </div>
-
             <div>
               {stage !== Stage.WAITING && <Pot amount={gameState.table.pot} />}
 
@@ -126,6 +130,7 @@ const Game = () => {
                   player={gameState.players[5]}
                   seatID={seatID}
                   stage={gameState.stage}
+                  stream={userStream}
                 />
                 <Seat
                   dealDelay={cardDelay[4]}
@@ -133,6 +138,7 @@ const Game = () => {
                   player={gameState.players[4]}
                   seatID={seatID}
                   stage={gameState.stage}
+                  stream={userStream}
                 />
                 <Seat
                   dealDelay={cardDelay[3]}
@@ -140,6 +146,7 @@ const Game = () => {
                   player={gameState.players[3]}
                   seatID={seatID}
                   stage={gameState.stage}
+                  stream={userStream}
                 />
               </div>
             </div>

@@ -1,6 +1,10 @@
+import { has } from 'lodash'
+import Peer from 'simple-peer'
+
 import actionTypes from './actionTypes'
 import { Event } from './enums'
 
+// Errors
 const error = (dispatch, params) => {
   dispatch({
     type: actionTypes.SERVER.ERROR,
@@ -8,20 +12,62 @@ const error = (dispatch, params) => {
   })
 }
 
+// WebRTC
 
-const onJoinGame = (dispatch, params) => {
-  dispatch({
-    type: actionTypes.SERVER.ON_JOIN,
-    userID: params.userID,
-    username: params.username,
+const newPeer = (dispatch, params, ws, peers) => {
+  if (has(peers, params.peerID)) {
+    return
+  }
+
+  const peer = new Peer({initiator: true})
+  peer.on('signal', data => {
+    sendSignal(ws, params.peerID, data)
   })
+
+  dispatch({
+    type: actionTypes.WEBRTC.NEW_PEER,
+    peer,
+    peerID: params.peerID,
+  })
+
 }
 
-const onTakeSeat = (dispatch, params) => {
-  dispatch({
-    type: actionTypes.SERVER.ON_TAKE_SEAT,
-    seatID: params.seatID,
-  })
+const onReceiveSignal = (dispatch, params, ws, peers) => {
+  if (params.signalData.type === "offer") {
+    const peer = new Peer()
+    peer.on('signal', data => {
+      sendSignal(ws, params.peerID, data)
+    })
+    dispatch({
+      type: actionTypes.WEBRTC.NEW_PEER,
+      peer,
+      peerID: params.peerID,
+    })
+    peer.signal(params.signalData)
+  } else if (has(peers, params.peerID)) {
+    peers[params.peerID].peer.signal(params.signalData)
+  }
+}
+
+const sendSignal = (client, peerID, signalData) => {
+  client.send(JSON.stringify({
+    action: Event.SEND_SIGNAL,
+    params: {
+      peerID,
+      signalData: signalData,
+    },
+  }))
+}
+
+// Game
+
+const joinGame = (client, username) => {
+  client.send(JSON.stringify({
+    action: Event.JOIN,
+    params: {
+      username,
+    },
+  }))
 }
 
 const newMessage = (dispatch, params) => {
@@ -35,20 +81,27 @@ const newMessage = (dispatch, params) => {
   })
 }
 
-const updateGame = (dispatch, params) => {
+const onJoinGame = (dispatch, params) => {
   dispatch({
-    type: actionTypes.GAME.UPDATE,
-    gameState: params,
+    type: actionTypes.SERVER.ON_JOIN,
+    userID: params.userID,
+    username: params.username,
   })
 }
 
-const joinGame = (client, username) => {
-  client.send(JSON.stringify({
-    action: Event.JOIN,
-    params: {
-      username,
-    },
-  }))
+const onTakeSeat = (dispatch, params) => {
+  navigator.mediaDevices.getUserMedia({
+    video: true,
+    audio: false,
+  })
+  .then(stream => {
+    dispatch({
+      type: actionTypes.SERVER.ON_TAKE_SEAT,
+      seatID: params.seatID,
+      userStream: stream,
+    })
+  })
+  .catch(() => {}) // TODO Handle error
 }
 
 const sendMessage = (client, username, message) => {
@@ -77,8 +130,23 @@ const takeSeat = (client, seatID) => {
   }))
 }
 
+const updateGame = (dispatch, params) => {
+  dispatch({
+    type: actionTypes.GAME.UPDATE,
+    gameState: params,
+  })
+}
+
 export {
+  // Errors
   error,
+
+  // WebRTC
+  newPeer,
+  onReceiveSignal,
+  sendSignal,
+
+  // Game
   joinGame,
   newMessage,
   onJoinGame,

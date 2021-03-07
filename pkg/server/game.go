@@ -18,6 +18,11 @@ const actionNewMessage string = "new-message"
 const actionSendMessage string = "send-message"
 const actionTakeSeat string = "take-seat"
 
+// WebRTC Signaling actions
+const actionNewPeer string = "new-peer"
+const actionOnReceiveSignal string = "on-receive-signal"
+const actionSendSignal string = "send-signal"
+
 // Game actions
 const actionBet string = "bet"
 const actionCall string = "call"
@@ -51,6 +56,16 @@ func (g GameStage) String() string {
 	return [...]string{"Waiting", "Preflop", "Flop", "Turn", "River", "Showdown"}[g]
 }
 
+// BroadcastEvent is an event that is broadcasted to multiple clients.
+//
+// There are cases where we don't want to broadcast to everyone. In this scenario
+// the exclude clients map can be used. This will prevent messages from being sent
+// to the specified client ID
+type BroadcastEvent struct {
+	Event          Event
+	ExcludeClients map[string]bool
+}
+
 // Event is a JSON message in the game loop.
 type Event struct {
 	Action string                 `json:"action"`
@@ -66,6 +81,14 @@ type GameState struct {
 	Table        poker.Table
 }
 
+// NewBroadcastEvent creates a new broadcast event that will send the message to all clients
+func NewBroadcastEvent(e Event) BroadcastEvent {
+	return BroadcastEvent{
+		Event:          e,
+		ExcludeClients: make(map[string]bool, 0),
+	}
+}
+
 // DisconnectPlayer disconnects player from a client when a client has been disconnected.
 //
 // - When a client is disconnected, we will set the player to be computer controlled
@@ -78,26 +101,30 @@ func DisconnectPlayer(c *Client) {
 		player.IsHuman = false
 		if c.gameState.Stage == Waiting {
 			player.Status = poker.PlayerVacated
-			c.hub.broadcast <- createUpdateGameEvent(c)
+			c.hub.broadcast <- NewBroadcastEvent(createUpdateGameEvent(c))
 		} else if c.gameState.Stage < Showdown {
 			HandleComputerMove(c)
 		}
 	}
-	c.hub.broadcast <- createNewMessageEvent(
-		c.id,
+	c.hub.broadcast <- NewBroadcastEvent(createNewMessageEvent(
 		systemUsername,
 		fmt.Sprintf("%s has left the game.", c.username),
-	)
+	))
 }
 
 // ProcessEvent process event
 func ProcessEvent(c *Client, e Event) {
 	var err error
-
 	if e.Action == actionJoin {
 		err = HandleJoin(c, e.Params["username"].(string))
 	} else if e.Action == actionSendMessage {
 		err = HandleSendMessage(c, e.Params["username"].(string), e.Params["message"].(string))
+	} else if e.Action == actionSendSignal {
+		err = HandleSendSignal(
+			c,
+			e.Params["peerID"].(string),
+			e.Params["signalData"],
+		)
 	} else if e.Action == actionTakeSeat {
 		err = HandleTakeSeat(c, e.Params["seatID"].(string))
 	} else {
@@ -125,26 +152,43 @@ func ProcessEvent(c *Client, e Event) {
 
 // HandlePlayerError handles player error (not system error)
 func HandlePlayerError(c *Client, err error) error {
-	c.send <- createErrorEvent(c.id, err)
+	c.send <- createErrorEvent(err)
 	return nil
 }
 
 // HandleJoin handles join event
 func HandleJoin(c *Client, username string) error {
 	c.username = username
+
 	c.send <- createOnJoinEvent(c.id, c.username)
-	c.hub.broadcast <- createNewMessageEvent(
-		c.id,
+
+	c.hub.broadcast <- BroadcastEvent{
+		Event:          createNewPeerEvent(c.id),
+		ExcludeClients: map[string]bool{c.id: true},
+	}
+
+	c.hub.broadcast <- NewBroadcastEvent(createNewMessageEvent(
 		systemUsername,
 		fmt.Sprintf("%s joined the game.", c.username),
-	)
+	))
+
 	c.send <- createUpdateGameEvent(c)
 	return nil
 }
 
 // HandleSendMessage handles send message event
 func HandleSendMessage(c *Client, username string, message string) error {
-	c.hub.broadcast <- createNewMessageEvent(c.id, username, message)
+	c.hub.broadcast <- NewBroadcastEvent(createNewMessageEvent(username, message))
+	return nil
+}
+
+// HandleSendSignal handles WebRTC signaling messages
+func HandleSendSignal(c *Client, recipientID string, signalData interface{}) error {
+	recipient, ok := c.hub.clients[recipientID]
+	if ok == false {
+		return fmt.Errorf("Recipient userID (%s) does not exist", recipientID)
+	}
+	recipient.send <- createOnReceiveSignal(c.id, signalData)
 	return nil
 }
 
@@ -180,14 +224,14 @@ func HandleTakeSeat(c *Client, seatID string) error {
 	selectedPlayer.IsHuman = true
 	c.seatID = selectedPlayer.ID
 
-	c.send <- createOnTakeSeatEvent(c.id, seatID)
+	c.send <- createOnTakeSeatEvent(seatID)
 
 	// Try to start a new game if one hasn't started yet.
 	if c.gameState.Stage == Waiting {
 		StartNewHand(c.gameState)
 	}
 
-	c.hub.broadcast <- createUpdateGameEvent(c)
+	c.hub.broadcast <- NewBroadcastEvent(createUpdateGameEvent(c))
 	return nil
 }
 
@@ -197,11 +241,10 @@ func HandleFold(c *Client) error {
 	if err != nil {
 		return err
 	}
-	c.hub.broadcast <- createNewMessageEvent(
-		c.id,
+	c.hub.broadcast <- NewBroadcastEvent(createNewMessageEvent(
 		systemUsername,
 		fmt.Sprintf("%s folds.", c.gameState.CurrentSeat.Player.Name),
-	)
+	))
 	return GoToNextGameState(c)
 }
 
@@ -211,11 +254,10 @@ func HandleCheck(c *Client) error {
 	if err != nil {
 		return err
 	}
-	c.hub.broadcast <- createNewMessageEvent(
-		c.id,
+	c.hub.broadcast <- NewBroadcastEvent(createNewMessageEvent(
 		systemUsername,
 		fmt.Sprintf("%s checks.", c.gameState.CurrentSeat.Player.Name),
-	)
+	))
 	return GoToNextGameState(c)
 }
 
@@ -225,11 +267,10 @@ func HandleCall(c *Client) error {
 	if err != nil {
 		return err
 	}
-	c.hub.broadcast <- createNewMessageEvent(
-		c.id,
+	c.hub.broadcast <- NewBroadcastEvent(createNewMessageEvent(
 		systemUsername,
 		fmt.Sprintf("%s calls.", c.gameState.CurrentSeat.Player.Name),
-	)
+	))
 	return GoToNextGameState(c)
 }
 
@@ -247,11 +288,10 @@ func HandleRaise(c *Client, raiseAmount int) error {
 		return err
 	}
 
-	c.hub.broadcast <- createNewMessageEvent(
-		c.id,
+	c.hub.broadcast <- NewBroadcastEvent(createNewMessageEvent(
 		systemUsername,
 		fmt.Sprintf("%s %s ℝ%d.", c.gameState.CurrentSeat.Player.Name, actionLabel, raiseAmount),
-	)
+	))
 	return GoToNextGameState(c)
 }
 
@@ -270,7 +310,7 @@ func GoToNextGameState(c *Client) error {
 			break
 		}
 	}
-	c.hub.broadcast <- createUpdateGameEvent(c)
+	c.hub.broadcast <- NewBroadcastEvent(createUpdateGameEvent(c))
 
 	HandleComputerMove(c)
 
@@ -321,14 +361,13 @@ func NextGameState(c *Client) error {
 	winnerByFold := poker.DetermineWinnerByFold(g.CurrentSeat)
 
 	if winnerByFold != nil {
-		c.hub.broadcast <- createNewMessageEvent(
-			c.id,
+		c.hub.broadcast <- NewBroadcastEvent(createNewMessageEvent(
 			systemUsername,
 			fmt.Sprintf("%s won the hand.", winnerByFold.Name),
-		)
+		))
 		poker.AwardPot(&g.Table, winnerByFold)
 		StartNewHand(g)
-		c.hub.broadcast <- createNewMessageEvent(c.id, systemUsername, "Starting new hand.")
+		c.hub.broadcast <- NewBroadcastEvent(createNewMessageEvent(systemUsername, "Starting new hand."))
 		return nil
 	}
 
@@ -359,7 +398,7 @@ func NextGameState(c *Client) error {
 			if err != nil {
 				return err
 			}
-			c.hub.broadcast <- createNewMessageEvent(c.id, systemUsername, "Dealing flop.")
+			c.hub.broadcast <- NewBroadcastEvent(createNewMessageEvent(systemUsername, "Dealing flop."))
 		} else if g.Stage == Turn {
 			poker.DealTurn(&g.Deck, &g.Table)
 			g.CurrentSeat, err = poker.GetNextActiveSeat(g.Table.Dealer)
@@ -370,7 +409,7 @@ func NextGameState(c *Client) error {
 			if err != nil {
 				return err
 			}
-			c.hub.broadcast <- createNewMessageEvent(c.id, systemUsername, "Dealing turn.")
+			c.hub.broadcast <- NewBroadcastEvent(createNewMessageEvent(systemUsername, "Dealing turn."))
 		} else if g.Stage == River {
 			poker.DealRiver(&g.Deck, &g.Table)
 			g.CurrentSeat, err = poker.GetNextActiveSeat(g.Table.Dealer)
@@ -381,11 +420,11 @@ func NextGameState(c *Client) error {
 			if err != nil {
 				return err
 			}
-			c.hub.broadcast <- createNewMessageEvent(c.id, systemUsername, "Dealing river.")
+			c.hub.broadcast <- NewBroadcastEvent(createNewMessageEvent(systemUsername, "Dealing river."))
 		} else if g.Stage == Showdown {
 			DetermineWinners(c)
 			StartNewHand(g)
-			c.hub.broadcast <- createNewMessageEvent(c.id, systemUsername, "Starting new hand.")
+			c.hub.broadcast <- NewBroadcastEvent(createNewMessageEvent(systemUsername, "Starting new hand."))
 		} else {
 			return fmt.Errorf("Invalid game stage encountered: %s", g.Stage.String())
 		}
@@ -409,8 +448,7 @@ func DetermineWinners(c *Client) {
 			}
 		}
 		for _, ph := range winningHandsByPot {
-			c.hub.broadcast <- createNewMessageEvent(
-				c.id,
+			c.hub.broadcast <- NewBroadcastEvent(createNewMessageEvent(
 				systemUsername,
 				fmt.Sprintf(
 					"%s wins ℝ%d %s with %s.",
@@ -419,7 +457,7 @@ func DetermineWinners(c *Client) {
 					potText,
 					strings.ToLower(ph.Hand.Rank.String()),
 				),
-			)
+			))
 		}
 	}
 }
@@ -555,6 +593,28 @@ func StartNewHand(g *GameState) {
 	g.Table = table
 }
 
+// GetActions gets the actions available to active player
+func GetActions(g *GameState) []string {
+	var actions []string
+
+	if g.CurrentSeat.Player.CanFold(g.BettingRound) {
+		actions = append(actions, actionFold)
+	}
+
+	if g.CurrentSeat.Player.CanCheck(g.BettingRound) {
+		actions = append(actions, actionCheck)
+	}
+
+	if g.CurrentSeat.Player.CanCall(g.BettingRound) {
+		actions = append(actions, actionCall)
+	}
+
+	if g.CurrentSeat.Player.CanRaise(g.BettingRound) {
+		actions = append(actions, actionRaise)
+	}
+	return actions
+}
+
 func createOnJoinEvent(userID string, username string) Event {
 	return Event{
 		Action: actionOnJoin,
@@ -565,11 +625,30 @@ func createOnJoinEvent(userID string, username string) Event {
 	}
 }
 
-func createOnTakeSeatEvent(userID string, seatID string) Event {
+func createOnTakeSeatEvent(seatID string) Event {
 	return Event{
 		Action: actionOnTakeSeat,
 		Params: map[string]interface{}{
 			"seatID": seatID,
+		},
+	}
+}
+
+func createNewPeerEvent(peerID string) Event {
+	return Event{
+		Action: actionNewPeer,
+		Params: map[string]interface{}{
+			"peerID": peerID,
+		},
+	}
+}
+
+func createOnReceiveSignal(peerID string, signalData interface{}) Event {
+	return Event{
+		Action: actionOnReceiveSignal,
+		Params: map[string]interface{}{
+			"peerID":     peerID,
+			"signalData": signalData,
 		},
 	}
 }
@@ -676,29 +755,7 @@ func createUpdateGameEvent(c *Client) Event {
 	}
 }
 
-// GetActions gets the actions available to active player
-func GetActions(g *GameState) []string {
-	var actions []string
-
-	if g.CurrentSeat.Player.CanFold(g.BettingRound) {
-		actions = append(actions, actionFold)
-	}
-
-	if g.CurrentSeat.Player.CanCheck(g.BettingRound) {
-		actions = append(actions, actionCheck)
-	}
-
-	if g.CurrentSeat.Player.CanCall(g.BettingRound) {
-		actions = append(actions, actionCall)
-	}
-
-	if g.CurrentSeat.Player.CanRaise(g.BettingRound) {
-		actions = append(actions, actionRaise)
-	}
-	return actions
-}
-
-func createNewMessageEvent(userID string, username string, message string) Event {
+func createNewMessageEvent(username string, message string) Event {
 	return Event{
 		Action: actionNewMessage,
 		Params: map[string]interface{}{
@@ -709,7 +766,7 @@ func createNewMessageEvent(userID string, username string, message string) Event
 	}
 }
 
-func createErrorEvent(userID string, err error) Event {
+func createErrorEvent(err error) Event {
 	return Event{
 		Action: actionError,
 		Params: map[string]interface{}{

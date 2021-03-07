@@ -2,7 +2,7 @@ import classNames from 'classnames'
 import { motion, useAnimation } from "framer-motion"
 import { noop } from 'lodash'
 import PropTypes from 'prop-types'
-import React, { useEffect } from 'react'
+import React, { useEffect, useRef } from 'react'
 
 import AppPropTypes from '../AppPropTypes'
 import { PlayerLocation, PlayerStatus, Stage } from '../enums'
@@ -43,28 +43,23 @@ const actionCss = classNames(
   'text-sm',
 )
 
-
-const takeSeatCss = classNames(
-  'bg-opacity-50',
+const chipsInfoCss = classNames(
   'bg-gray-700',
+  'bg-opacity-50',
+  'border-1',
   'border-gray-800',
   'border-opacity-10',
-  'text-gray-100',
-
-  'border-2',
-  'rounded-xl',
+  'rounded',
   'shadow-md',
 
   // spacing
+  'm-1',
   'p-1',
+  'lg:p-2',
 
   // text
-  'text-center',
-
-  // hover
-  'hover:bg-opacity-50',
-  'hover:bg-gray-800',
-  'hover:text-gray-200',
+  'text-gray-100',
+  'text-xs',
 )
 
 const getWrapCss = (location) => (
@@ -79,7 +74,7 @@ const getWrapCss = (location) => (
 
     // spacing
     'sm:mx-2',
-    'lg:mx-10',
+    'lg:mx-4',
     'my-2',
     'p-1',
 
@@ -88,25 +83,27 @@ const getWrapCss = (location) => (
   )
 )
 
-const getCardWrapCss = (player) => (
+const getCardWrapCss = (location) => (
   classNames(
     {
-      'invisible': player.hasFolded || player.status !== PlayerStatus.ACTIVE,
+      'flex-col': location === PlayerLocation.TOP,
+      'flex-col-reverse': location === PlayerLocation.BOTTOM,
     },
-
     'flex',
-    'justify-center',
+    'flex-col',
+
+    'w-5/12',
   )
 )
 
-const getInfoCss = (player) => (
+const getNameOverlayCss = (player) => (
   classNames(
     {
-      'bg-opacity-80': player.isActive,
+      'bg-opacity-60': player.isActive,
       'bg-yellow-400': player.isActive,
       'border-yellow-500': player.isActive,
-      'border-opacity-80': player.isActive,
-      'text-gray-700': player.isActive,
+      'border-opacity-60': player.isActive,
+      'text-gray-900': player.isActive,
 
       'bg-opacity-50': !player.isActive,
       'bg-gray-700': !player.isActive,
@@ -114,18 +111,55 @@ const getInfoCss = (player) => (
       'border-opacity-10': !player.isActive,
       'text-gray-100': !player.isActive,
     },
-
     'border-1',
-    'rounded-xl',
     'shadow-md',
+
+    // position
+    'absolute',
+    'bottom-0',
+    'left-0',
+    'right-0',
 
     // spacing
     'p-1',
 
     // text
-    'text-center',
+    'text-xs',
   )
 )
+
+
+
+const getButtonCss = (seatID) => (
+  classNames(
+    {
+      'cursor-default': seatID !== null,
+      'hover:bg-gray-800': seatID === null,
+      'hover:bg-opacity-50': seatID === null,
+      'hover:text-gray-200': seatID === null,
+    },
+
+    'flex-1',
+
+    'bg-gray-700',
+    'bg-opacity-50',
+    'border-1',
+    'border-gray-800',
+    'border-opacity-10',
+    'rounded',
+    'shadow-md',
+
+    // spacing
+    'mb-2',
+    'ml-1',
+    'p-2',
+
+    // text
+    'text-gray-100',
+    'text-xs',
+  )
+)
+
 
 const getDealerCss = (player) => (
   classNames(
@@ -161,18 +195,28 @@ const getCardCss = (player) => (
 
 const getPlayerStatusMessage = (player) => {
   if (player.status === PlayerStatus.VACATED) {
-    return 'OPEN SEAT'
+    return 'Open Seat'
   } else if (player.status === PlayerStatus.SITTING_OUT) {
-    return 'SITTING OUT'
+    return 'Waiting...'
   } else if (player.hasFolded) {
-    return 'FOLDED'
+    return 'Folded'
   } else if (player.chips === 0) {
-    return 'ALL IN'
+    return 'All In'
   }
   return `ℝ${player.chips}`
 }
 
-const Seat = ({dealDelay, location, onTakeSeat, player, seatID, stage}) => {
+const Seat = ({
+  dealDelay,
+  location,
+  onTakeSeat,
+  player,
+  seatID,
+  stage,
+  stream,
+}) => {
+  const videoRef = useRef(null)
+
   const card1Anim = useAnimation()
   const card2Anim = useAnimation()
 
@@ -196,33 +240,49 @@ const Seat = ({dealDelay, location, onTakeSeat, player, seatID, stage}) => {
     dealSeq()
   }, [card1Anim, card2Anim, dealDelay, playerActive, stage])
 
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream
+    }
+  }, [videoRef, stream])
+
+  if (player.status === PlayerStatus.VACATED) {
+    return (
+      <div className={getWrapCss(location)}>
+        <div className={getDealerCss(player)}>D</div>
+        <button className={getButtonCss(seatID)} onClick={() => onTakeSeat(player.id)}>
+          {seatID === null ? 'Take Seat' : 'Open Seat'}
+        </button>
+      </div>
+    )
+  }
+
+
   return (
     <div className={getWrapCss(location)}>
       <div className="flex justify-center mb-2">
         <div className={getDealerCss(player)}>D</div>
         {player.chipsInPot > 0 && <div className={actionCss}>ℝ{player.chipsInPot}</div>}
       </div>
-      <div className={getCardWrapCss(player)}>
-        <motion.div animate={card1Anim} className={getCardCss(player)} variants={CARD_ANIM_VARIANTS}>
-          <img
-            alt="Card"
-            className="max-h-32"
-            src={getCardImage(player.holeCards[0])}
-            variants={CARD_ANIM_VARIANTS}
-          />
-        </motion.div>
-        <motion.div animate={card2Anim} className={getCardCss(player)} variants={CARD_ANIM_VARIANTS}>
-          <img alt="Card" className="max-h-32" src={getCardImage(player.holeCards[1])} />
-        </motion.div>
-      </div>
-
-      {player.status === PlayerStatus.VACATED && seatID === null
-        ? <button className={takeSeatCss} onClick={() => onTakeSeat(player.id)}>Take Seat</button>
-        : <div className={getInfoCss(player)}>
-            <p>{player.name}</p>
-            <p>{getPlayerStatusMessage(player)}</p>
+      <div className="flex">
+          <div className="w-7/12 relative">
+            <video className="rounded shadow-lg" ref={videoRef} autoPlay />
+            <div className={getNameOverlayCss(player)}>
+              <p>{player.name}</p>
+            </div>
           </div>
-      }
+          <div className={getCardWrapCss(location)}>
+            <p className={chipsInfoCss}>{getPlayerStatusMessage(player)}</p>
+            <div className="flex justify-center items-end">
+              <motion.div animate={card1Anim} className={getCardCss(player)} variants={CARD_ANIM_VARIANTS}>
+                <img alt="Card" className="max-h-20" src={getCardImage(player.holeCards[0])} />
+              </motion.div>
+              <motion.div animate={card2Anim} className={getCardCss(player)} variants={CARD_ANIM_VARIANTS}>
+                <img alt="Card" className="max-h-20" src={getCardImage(player.holeCards[1])} />
+              </motion.div>
+            </div>
+          </div>
+        </div>
     </div>
   )
 }
@@ -239,6 +299,7 @@ Seat.propTypes = {
   player: AppPropTypes.player.isRequired,
   seatID: PropTypes.string,
   stage: AppPropTypes.stage.isRequired,
+  stream: PropTypes.any,
 }
 
 export default Seat

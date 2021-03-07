@@ -1,3 +1,4 @@
+import classNames from 'classnames'
 import { motion, useAnimation } from "framer-motion"
 import { concat } from 'lodash'
 import PropTypes from 'prop-types'
@@ -24,6 +25,12 @@ const CARD_ANIM_VARIANTS = {
     opacity: 1,
   },
 }
+
+const cardCss = classNames(
+  'max-h-16',
+  'sm:max-h-20',
+  'lg:max-h-28',
+)
 
 const CommunityCards = ({flop, turn, river, stage}) => {
   const flopAnim1 = useAnimation()
@@ -72,23 +79,23 @@ const CommunityCards = ({flop, turn, river, stage}) => {
       return (
         <div key={index} className="relative m-2">
           <div className="invisible">
-            <img alt="Card" className="max-h-32" src="images/cards/1B.svg" />
+            <img alt="Card" className={cardCss} src="images/cards/1B.svg" />
           </div>
           <motion.div
             animate={cardControls[index]}
-            className="absolute top-0 left-0"
+            className="absolute top-0 left-0 z-50"
             initial="initial"
             key={index}
             variants={CARD_ANIM_VARIANTS}
           >
-            <img alt="Card" className="max-h-32" src={getCardImage(card)} />
+            <img alt="Card" className={cardCss} src={getCardImage(card)} />
           </motion.div>
         </div>
       )
     }
     return (
       <div className="m-2 invisible" key={index}>
-        <img alt="Card" className="max-h-32" src="images/cards/1B.svg" />
+        <img alt="Card" className={cardCss} src="images/cards/1B.svg" />
       </div>
     )
   })

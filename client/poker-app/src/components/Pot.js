@@ -18,7 +18,7 @@ const cssInfo = classNames(
   // text
   'text-center',
   'text-gray-100',
-  'text-sm',
+  'text-xs',
 )
 
 const Pot = ({amount}) => (

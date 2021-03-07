@@ -12,6 +12,9 @@ const actionNames = [
   'SERVER.ON_JOIN',
   'SERVER.ON_TAKE_SEAT',
   'SERVER.JOIN',
+  'WEBRTC.NEW_PEER',
+  'WEBRTC.ON_RECEIVE_ANSWER',
+  'WEBRTC.ON_RECEIVE_OFFER',
 ]
 
 /**

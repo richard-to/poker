@@ -15,6 +15,7 @@ const cssChatLog = classNames(
 
   // text
   'text-gray-700',
+  'text-sm',
 )
 
 const Chat = ({messages, onSend}) => {

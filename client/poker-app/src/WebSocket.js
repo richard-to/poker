@@ -5,9 +5,11 @@ import { w3cwebsocket} from "websocket"
 
 import {
   error,
-  onJoinGame,
-  onTakeSeat,
   newMessage,
+  newPeer,
+  onJoinGame,
+  onReceiveSignal,
+  onTakeSeat,
   joinGame,
   sendMessage,
   sendPlayerAction,
@@ -43,7 +45,12 @@ const WebSocketProvider = ({ children }) => {
       error(dispatch, {error: 'Lost connection to the server.'})
     }
 
-    _client.onmessage = (payload) => {
+    setClient(_client)
+  }, [dispatch])
+
+  if (client) {
+    //console.log(client)
+    client.onmessage = (payload) => {
       let event = JSON.parse(payload.data)
       if (event.action === Event.ERROR) {
         error(dispatch, event.params)
@@ -55,12 +62,15 @@ const WebSocketProvider = ({ children }) => {
         newMessage(dispatch, event.params)
       } else if (event.action === Event.UPDATE_GAME) {
         updateGame(dispatch, event.params)
+      } else if (event.action === Event.NEW_PEER) {
+        newPeer(dispatch, event.params, client, appState.peers)
+      } else if (event.action === Event.ON_RECEIVE_SIGNAL) {
+        onReceiveSignal(dispatch, event.params, client, appState.peers)
       } else {
         error(dispatch, {error: 'Unknown message received.'})
       }
     }
-    setClient(_client)
-  }, [dispatch])
+  }
 
   ws = {
     client,
