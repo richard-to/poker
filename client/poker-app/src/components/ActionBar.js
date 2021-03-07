@@ -1,10 +1,11 @@
 import classNames from 'classnames'
 import { noop } from 'lodash'
 import PropTypes from 'prop-types'
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 
 import AppPropTypes from '../AppPropTypes'
 import { Event, Stage } from '../enums'
+import RaiseInput from './RaiseInput'
 
 const buttonCss = classNames(
   'flex-1',
@@ -40,7 +41,7 @@ const raiseWrapCss = classNames(
   'text-sm',
   'text-gray-900',
 )
-
+/*
 const getRaiseInputCss = (error) => (
   classNames(
     {
@@ -64,20 +65,36 @@ const getRaiseInputCss = (error) => (
     'text-center',
   )
 )
-
-const calcBetSizes = (minBetAmount, minRaiseAmount, maxRaiseAmount, stage, totalChips, totalPot) => {
+*/
+const makeBetSizesSuggestions = (
+  minBetAmount,
+  minRaiseAmount,
+  maxRaiseAmount,
+  stage,
+  totalChips,
+  totalPot
+) => {
   const bet3x = minBetAmount * 3
   if (stage === Stage.PREFLOP && minBetAmount === minRaiseAmount && bet3x < totalChips) {
-    return [minRaiseAmount, bet3x, maxRaiseAmount]
+    return [
+      {label: 'Min bet', value: minRaiseAmount.toString()},
+      {label: '3BB', value: bet3x.toString()},
+      {label: 'All In', value: maxRaiseAmount.toString()},
+    ]
   }
   const betSizes = [
-    minRaiseAmount,
-    Math.ceil(totalPot * 0.333),
-    Math.ceil(totalPot * 0.667),
-    totalPot,
-    maxRaiseAmount,
+    {label: 'Min raise', value: minRaiseAmount},
+    {label: '1/4 Pot', value: Math.ceil(totalPot * 0.25)},
+    {label: '1/3 Pot', value: Math.ceil(totalPot * 0.333)},
+    {label: '1/2 Pot', value: Math.ceil(totalPot * 0.5)},
+    {label: '2/3 Pot', value: Math.ceil(totalPot * 0.667)},
+    {label: '3/4 Pot', value: Math.ceil(totalPot * 0.75)},
+    {label: 'Pot', value: totalPot},
+    {label: 'All In', value: maxRaiseAmount},
   ]
-  return betSizes.filter(bet => bet > minBetAmount && bet < totalChips)
+  return betSizes
+    .filter(bet => bet.value >= minRaiseAmount && bet.value < totalChips)
+    .map(bet => ({label: bet.label, value: bet.value.toString()}))
 }
 
 const ActionBar = ({
@@ -92,35 +109,7 @@ const ActionBar = ({
     totalChips,
     totalPot,
 }) => {
-  const [raiseInputError, setRaiseInputError] = useState(false)
-  const [raiseInput, setRaiseInput] = useState(minRaiseAmount)
   const [raiseByAmount, setRaiseByAmount] = useState(minRaiseAmount)
-
-  useEffect(() => {
-    setRaiseByAmount(minRaiseAmount)
-    setRaiseInput(minRaiseAmount)
-    setRaiseInputError(false)
-  }, [minRaiseAmount])
-
-  const onRaiseInputEntered = (e) => {
-    if ((e.type === 'keyup' && e.code === 'Enter') || e.type === 'blur') {
-      onRaiseByAmount(e)
-    }
-  }
-  const onRaiseByAmount = (e) => {
-    const value = parseInt(e.target.value)
-    if (value > maxRaiseAmount) {
-      setRaiseByAmount(maxRaiseAmount)
-      setRaiseInput(maxRaiseAmount)
-      setRaiseInputError(false)
-    } else if (value >= minRaiseAmount) {
-      setRaiseByAmount(value)
-      setRaiseInput(value)
-      setRaiseInputError(false)
-    } else {
-      setRaiseInputError(true)
-    }
-  }
 
   const raiseToAmount = callAmount + raiseByAmount
   const callRemaining = callAmount - chipsInPot
@@ -136,6 +125,7 @@ const ActionBar = ({
   }
 
   const raiseLabel = callAmount === 0 ? 'BET' : 'RAISE TO'
+  const placeholder = callAmount === 0 ? 'Enter a bet' : 'Enter a raise'
 
   const showRaiseSlider = actions.includes(Event.RAISE) && callRemaining + minRaiseAmount < totalChips
 
@@ -172,37 +162,27 @@ const ActionBar = ({
   })
 
 
-  const betSizes = calcBetSizes(minBetAmount, minRaiseAmount, maxRaiseAmount, stage, totalChips, totalPot)
-  const betSizeOptions = betSizes.map(betSize => <option key={betSize} value={betSize} />)
+  const betSizeSuggestions = makeBetSizesSuggestions(
+    minBetAmount,
+    minRaiseAmount,
+    maxRaiseAmount,
+    stage,
+    totalChips,
+    totalPot,
+  )
 
   return (
     <div className="flex bg-gray-800">
       {actionButtons}
       {showRaiseSlider &&
         <div className={raiseWrapCss}>
-          <input
-            className="mb-2"
-            type="range"
-            list="bet-options"
-            min={minRaiseAmount}
-            max={maxRaiseAmount}
-            onChange={(e) => onRaiseByAmount(e)}
-            value={raiseByAmount}
+          <RaiseInput
+            maxRaiseAmount={maxRaiseAmount}
+            minRaiseAmount={minRaiseAmount}
+            onRaiseByAmount={setRaiseByAmount}
+            placeholder={placeholder}
+            raiseSuggestions={betSizeSuggestions}
           />
-          <input
-            type="number"
-            className={getRaiseInputCss(raiseInputError)}
-            min={minRaiseAmount}
-            max={maxRaiseAmount}
-            onBlur={(e) => onRaiseInputEntered(e)}
-            onChange={(e) => setRaiseInput(e.target.value)}
-            onKeyUp={(e) => onRaiseInputEntered(e)}
-            placeholder={minRaiseAmount}
-            value={raiseInput}
-          />
-          <datalist id="bet-options">
-            {betSizeOptions}
-          </datalist>
         </div>
       }
     </div>
