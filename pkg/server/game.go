@@ -663,6 +663,13 @@ func createUpdateGameEvent(c *Client) Event {
 
 	g := c.gameState
 
+	clientSeatMap := make(map[string]string)
+	for _, client := range c.hub.clients {
+		if client.seatID != "" {
+			clientSeatMap[client.seatID] = client.id
+		}
+	}
+
 	players := make([]map[string]interface{}, 0)
 	seats := g.Table.Seats
 
@@ -752,10 +759,11 @@ func createUpdateGameEvent(c *Client) Event {
 	return Event{
 		Action: actionUpdateGame,
 		Params: map[string]interface{}{
-			"actionBar": actionBar,
-			"players":   players,
-			"stage":     g.Stage.String(),
-			"table":     table,
+			"actionBar":     actionBar,
+			"clientSeatMap": clientSeatMap,
+			"players":       players,
+			"stage":         g.Stage.String(),
+			"table":         table,
 		},
 	}
 }

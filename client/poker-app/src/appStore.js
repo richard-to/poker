@@ -61,14 +61,19 @@ const AppStateProvider = ({ children }) => {
           ...state,
           gameState: action.gameState,
         }
-      case actionTypes.WEBRTC.NEW_PEER:
+      case actionTypes.WEBRTC.SET_PEER:
         return {
           ...state,
           peers: update(
             state.peers, {
-              [action.peerID]: {$set: {peer: action.peer, stream: null}},
+              [action.peerID]: {$set: {peer: action.peer, stream: action.stream}},
             },
           ),
+        }
+      case actionTypes.WEBRTC.REMOVE_PEER:
+        return {
+          ...state,
+          peers: update(state.peers, {$unset: [action.peerID]}),
         }
       default:
         throw new Error()

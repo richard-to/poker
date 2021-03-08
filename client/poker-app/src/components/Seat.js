@@ -58,6 +58,7 @@ const chipsInfoCss = classNames(
   'lg:p-2',
 
   // text
+  'text-center',
   'text-gray-100',
   'text-xs',
 )
@@ -187,7 +188,7 @@ const getDealerCss = (player) => (
 const getCardCss = (player) => (
   classNames(
     {
-      'invisible': player.status !== PlayerStatus.ACTIVE,
+      'invisible': player.status !== PlayerStatus.ACTIVE || player.hasFolded,
     },
     'm-1',
   )
@@ -265,10 +266,12 @@ const Seat = ({
         {player.chipsInPot > 0 && <div className={actionCss}>ℝ{player.chipsInPot}</div>}
       </div>
       <div className="flex">
-          <div className="w-7/12 relative">
-            <video className="rounded shadow-lg" ref={videoRef} autoPlay />
-            <div className={getNameOverlayCss(player)}>
-              <p>{player.name}</p>
+          <div className="w-7/12">
+            <div className="relative bg-black">
+              <video className="rounded shadow-lg" ref={videoRef} autoPlay />
+              <div className={getNameOverlayCss(player)}>
+                <p>{player.name}</p>
+              </div>
             </div>
           </div>
           <div className={getCardWrapCss(location)}>

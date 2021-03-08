@@ -1,4 +1,4 @@
-import { zip } from 'lodash'
+import { has, zip } from 'lodash'
 import React, { useContext, useEffect, useState } from 'react'
 
 import { appStore } from '../appStore'
@@ -19,15 +19,26 @@ const DEFAULT_CARD_DELAY = [
   [null, null],
   [null, null],
 ]
+
+const getStream = (userID, player, clientSeatMap, peers, userStream) => {
+  const peerID = clientSeatMap[player.id]
+  if (userID === peerID) {
+    console.log("USER", userStream)
+    return userStream
+  } else if (has(peers, peerID)) {
+    console.log("PEER", peers[peerID].stream)
+    return peers[peerID].stream
+  }
+  return null
+}
+
 const Game = () => {
-
-
   const ws = useContext(WebSocketContext)
 
   const appContext = useContext(appStore)
   const { appState } = appContext
-  const { chat, error, gameState, seatID, userStream } = appState
-
+  const { chat, error, gameState, seatID, peers, userID, userStream } = appState
+  console.log(peers)
   const [cardDelay, setCardDelay] = useState(DEFAULT_CARD_DELAY)
   const [newDeal, setNewDeal] = useState(true)
 
@@ -90,7 +101,12 @@ const Game = () => {
                 location={PlayerLocation.TOP}
                 seatID={seatID}
                 stage={gameState.stage}
-                stream={userStream}
+                stream={getStream(
+                  userID,
+                  gameState.players[0],
+                  gameState.clientSeatMap,
+                  peers,
+                  userStream)}
               />
               <Seat
                 dealDelay={cardDelay[1]}
@@ -99,7 +115,12 @@ const Game = () => {
                 location={PlayerLocation.TOP}
                 seatID={seatID}
                 stage={gameState.stage}
-                stream={userStream}
+                stream={getStream(
+                  userID,
+                  gameState.players[1],
+                  gameState.clientSeatMap,
+                  peers,
+                  userStream)}
               />
               <Seat
                 dealDelay={cardDelay[2]}
@@ -108,7 +129,12 @@ const Game = () => {
                 location={PlayerLocation.TOP}
                 seatID={seatID}
                 stage={gameState.stage}
-                stream={userStream}
+                stream={getStream(
+                  userID,
+                  gameState.players[2],
+                  gameState.clientSeatMap,
+                  peers,
+                  userStream)}
               />
             </div>
             <div>
@@ -130,7 +156,12 @@ const Game = () => {
                   player={gameState.players[5]}
                   seatID={seatID}
                   stage={gameState.stage}
-                  stream={userStream}
+                  stream={getStream(
+                    userID,
+                    gameState.players[5],
+                    gameState.clientSeatMap,
+                    peers,
+                    userStream)}
                 />
                 <Seat
                   dealDelay={cardDelay[4]}
@@ -138,7 +169,12 @@ const Game = () => {
                   player={gameState.players[4]}
                   seatID={seatID}
                   stage={gameState.stage}
-                  stream={userStream}
+                  stream={getStream(
+                    userID,
+                    gameState.players[4],
+                    gameState.clientSeatMap,
+                    peers,
+                    userStream)}
                 />
                 <Seat
                   dealDelay={cardDelay[3]}
@@ -146,7 +182,12 @@ const Game = () => {
                   player={gameState.players[3]}
                   seatID={seatID}
                   stage={gameState.stage}
-                  stream={userStream}
+                  stream={getStream(
+                    userID,
+                    gameState.players[3],
+                    gameState.clientSeatMap,
+                    peers,
+                    userStream)}
                 />
               </div>
             </div>

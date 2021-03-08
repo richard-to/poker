@@ -49,7 +49,6 @@ const WebSocketProvider = ({ children }) => {
   }, [dispatch])
 
   if (client) {
-    //console.log(client)
     client.onmessage = (payload) => {
       let event = JSON.parse(payload.data)
       if (event.action === Event.ERROR) {
@@ -57,15 +56,15 @@ const WebSocketProvider = ({ children }) => {
       } else if (event.action === Event.ON_JOIN) {
         onJoinGame(dispatch, event.params)
       } else if (event.action === Event.ON_TAKE_SEAT) {
-        onTakeSeat(dispatch, event.params)
+        onTakeSeat(dispatch, event.params, appState)
       } else if (event.action === Event.NEW_MESSAGE) {
         newMessage(dispatch, event.params)
       } else if (event.action === Event.UPDATE_GAME) {
         updateGame(dispatch, event.params)
       } else if (event.action === Event.NEW_PEER) {
-        newPeer(dispatch, event.params, client, appState.peers)
+        newPeer(dispatch, event.params, client, appState)
       } else if (event.action === Event.ON_RECEIVE_SIGNAL) {
-        onReceiveSignal(dispatch, event.params, client, appState.peers)
+        onReceiveSignal(dispatch, event.params, client, appState)
       } else {
         error(dispatch, {error: 'Unknown message received.'})
       }
