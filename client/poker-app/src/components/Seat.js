@@ -251,7 +251,11 @@ const Seat = ({
     return (
       <div className={getWrapCss(location)}>
         <div className={getDealerCss(player)}>D</div>
-        <button className={getButtonCss(seatID)} onClick={() => onTakeSeat(player.id)}>
+        <button
+          className={getButtonCss(seatID)}
+          disabled={seatID !== null}
+          onClick={() => onTakeSeat(player.id)}
+        >
           {seatID === null ? 'Take Seat' : 'Open Seat'}
         </button>
       </div>
