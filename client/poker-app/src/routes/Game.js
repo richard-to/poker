@@ -23,10 +23,8 @@ const DEFAULT_CARD_DELAY = [
 const getStream = (userID, player, clientSeatMap, peers, userStream) => {
   const peerID = clientSeatMap[player.id]
   if (userID === peerID) {
-    console.log("USER", userStream)
     return userStream
   } else if (has(peers, peerID)) {
-    console.log("PEER", peers[peerID].stream)
     return peers[peerID].stream
   }
   return null

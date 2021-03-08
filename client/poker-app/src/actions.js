@@ -24,10 +24,10 @@ const newPeer = (dispatch, params, ws, appState) => {
     sendSignal(ws, params.peerID, data)
   })
   peer.on('connect', () => {
-    console.log(`Peer (${params.peerID}) connected X`)
+    console.log(`Peer (${params.peerID}) connected`)
   })
   peer.on('stream', stream => {
-    console.log(`Peer (${params.peerID}) added new stream X`)
+    console.log(`Peer (${params.peerID}) added new stream`)
     dispatch({
       type: actionTypes.WEBRTC.SET_PEER,
       peer,
@@ -36,7 +36,7 @@ const newPeer = (dispatch, params, ws, appState) => {
     })
   })
   peer.on('close', () => {
-    console.log(`Peer (${params.peerID}) disconnected X`)
+    console.log(`Peer (${params.peerID}) disconnected`)
     dispatch({
       type: actionTypes.WEBRTC.REMOVE_PEER,
       peerID: params.peerID,
