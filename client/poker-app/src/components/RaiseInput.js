@@ -37,9 +37,15 @@ const RaiseInput = ({
       'focus:ring-2',
 
       // spacing
-      'p-3',
+      'p-1',
+      'md:p-3',
+
+
+      // text
+      'text-xs',
+      'md:text-sm',
     ),
-    suggestionsContainer: 'absolute bottom-14 left-0 right-0',
+    suggestionsContainer: 'absolute bottom-9 md:bottom-14 left-0 right-0',
     suggestionsList: 'bg-white border-1 border-gray-300 rounded p-2 shadow-lg',
     suggestion: 'hover:bg-blue-100 cursor-pointer font-normal text-left p-1',
 }

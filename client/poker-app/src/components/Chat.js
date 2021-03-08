@@ -15,7 +15,8 @@ const cssChatLog = classNames(
 
   // text
   'text-gray-700',
-  'text-sm',
+  'sm:text-xs',
+  'md:text-sm',
 )
 
 const Chat = ({messages, onSend}) => {
@@ -53,7 +54,7 @@ const Chat = ({messages, onSend}) => {
       </div>
       <div className="flex">
         <input
-          className="border p-3 w-full"
+          className="border p-3 w-full text-xs md:text-sm"
           name="name"
           onChange={(e) => setMessage(e.target.value)}
           onKeyUp={handleKeyPress}

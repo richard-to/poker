@@ -40,7 +40,7 @@ const actionCss = classNames(
   // text
   'font-medium',
   'text-gray-50',
-  'text-sm',
+  'text-xs',
 )
 
 const chipsInfoCss = classNames(
@@ -80,7 +80,7 @@ const getWrapCss = (location) => (
     'p-1',
 
     // text
-    'text-sm',
+    'text-xs',
   )
 )
 

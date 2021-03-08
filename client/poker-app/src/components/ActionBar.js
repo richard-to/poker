@@ -15,12 +15,16 @@ const buttonCss = classNames(
 
   // spacing
   'm-1',
-  'p-2',
+  'p-1',
+  'md:p-2',
 
   // text
   'font-medium',
   'text-center',
-  'text-sm',
+
+  'text-xs',
+  'md:text-sm',
+
   'text-white',
 )
 
