@@ -45,31 +45,7 @@ const raiseWrapCss = classNames(
   'text-sm',
   'text-gray-900',
 )
-/*
-const getRaiseInputCss = (error) => (
-  classNames(
-    {
-      'border-black': !error,
-      'focus:ring-blue-600': !error,
-      'text-black': !error,
-    },
-    {
-      'border-red-500': error,
-      'focus:ring-red-400': error,
-      'text-red-500': error,
-    },
 
-    'border',
-
-    // focus
-    'focus:outline-none',
-    'focus:ring-2',
-
-    // text
-    'text-center',
-  )
-)
-*/
 const makeBetSizesSuggestions = (
   minBetAmount,
   minRaiseAmount,

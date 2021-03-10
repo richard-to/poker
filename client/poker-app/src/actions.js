@@ -1,5 +1,6 @@
-import { forEach, has } from 'lodash'
+import { find, forEach, keys, omit } from 'lodash'
 import Peer from 'simple-peer'
+import { v4 as uuidv4 } from 'uuid'
 
 import actionTypes from './actionTypes'
 import { Event } from './enums'
@@ -13,88 +14,104 @@ const error = (dispatch, params) => {
 }
 
 // WebRTC
+const initPeer = (dispatch, ws, initiator, stream, peerID, streamID) => {
+  const peer = new Peer({initiator, stream})
 
-const newPeer = (dispatch, params, ws, appState) => {
-  if (has(appState.peers, params.peerID)) {
+  dispatch({
+    type: actionTypes.WEBRTC.SET_STREAM,
+    peer,
+    peerID,
+    peerStream: null,
+    streamID,
+  })
+
+  peer.on('signal', data => {
+    sendSignal(ws, peerID, streamID, data)
+  })
+
+  peer.on('connect', () => {
+    console.log(`Stream (${streamID}) connected`)
+  })
+
+  peer.on('stream', peerStream => {
+    console.log(`Stream (${streamID}) added new stream`)
+    dispatch({
+      type: actionTypes.WEBRTC.SET_STREAM,
+      peer,
+      peerID,
+      stream: peerStream,
+      streamID,
+    })
+  })
+
+  peer.on('close', () => {
+    console.log(`Stream (${streamID}) disconnected`)
+    dispatch({
+      type: actionTypes.WEBRTC.REMOVE_STREAM,
+      streamID: streamID,
+    })
+  })
+  peer.on('error', err => {
+    console.log(`Stream (${streamID}) error: ${err}`)
+    dispatch({
+      type: actionTypes.WEBRTC.REMOVE_STREAM,
+      streamID: streamID,
+    })
+  })
+
+  return peer
+}
+
+
+const updatePeers = (dispatch, ws, clientSeatMap, userID, seatID, userStream, streams) => {
+  if (!seatID || !userStream) {
     return
   }
+  keys(clientSeatMap).forEach(clientID => {
+    if (clientID === userID) {
+      return
+    }
+    const stream = find(streams, s => s.streamID.startsWith(userID) && s.peerID === clientID)
+    if (!stream) {
+      const streamID = `${userID}-${uuidv4()}`
+      initPeer(dispatch, ws, true, userStream, clientID, streamID)
+    }
+  })
+}
 
-  const peer = new Peer({initiator: true, stream: appState.userStream})
-  peer.on('signal', data => {
-    sendSignal(ws, params.peerID, data)
-  })
-  peer.on('connect', () => {
-    console.log(`Peer (${params.peerID}) connected`)
-  })
-  peer.on('stream', stream => {
-    console.log(`Peer (${params.peerID}) added new stream`)
-    dispatch({
-      type: actionTypes.WEBRTC.SET_PEER,
-      peer,
-      peerID: params.peerID,
-      stream,
-    })
-  })
-  peer.on('close', () => {
-    console.log(`Peer (${params.peerID}) disconnected`)
-    dispatch({
-      type: actionTypes.WEBRTC.REMOVE_PEER,
-      peerID: params.peerID,
-    })
+const updateStreamMap = (dispatch, clientSeatMap) => {
+  const streamSeatMap = {}
+  forEach(clientSeatMap, (seatID, clientID) => {
+    if (seatID) {
+      streamSeatMap[seatID] = clientID
+    }
   })
 
   dispatch({
-    type: actionTypes.WEBRTC.SET_PEER,
-    peer,
-    peerID: params.peerID,
-    stream: null,
+    type: actionTypes.WEBRTC.SET_STREAM_SEAT_MAP,
+    streamSeatMap,
   })
-
 }
 
 const onReceiveSignal = (dispatch, params, ws, appState) => {
   if (params.signalData.type === "offer") {
-    const peer = new Peer({stream: appState.userStream})
-    peer.on('signal', data => {
-      sendSignal(ws, params.peerID, data)
-    })
-    peer.on('connect', () => {
-      console.log(`Peer (${params.peerID}) connected`)
-    })
-    peer.on('stream', stream => {
-      console.log(`Peer (${params.peerID}) added new stream`)
-      dispatch({
-        type: actionTypes.WEBRTC.SET_PEER,
-        peer,
-        peerID: params.peerID,
-        stream,
-      })
-    })
-    peer.on('close', () => {
-      console.log(`Peer (${params.peerID}) disconnected`)
-      dispatch({
-        type: actionTypes.WEBRTC.REMOVE_PEER,
-        peerID: params.peerID,
-      })
-    })
-    dispatch({
-      type: actionTypes.WEBRTC.SET_PEER,
-      peer,
-      peerID: params.peerID,
-      stream: null,
-    })
+    const peer = initPeer(dispatch, ws, false, false, params.peerID, params.streamID)
     peer.signal(params.signalData)
-  } else if (has(appState.peers, params.peerID)) {
-    appState.peers[params.peerID].peer.signal(params.signalData)
+  } else {
+    const stream = find(appState.streams, s => s.streamID === params.streamID && s.peerID === params.peerID)
+    if (stream) {
+      stream.peer.signal(params.signalData)
+    }
   }
 }
 
-const sendSignal = (client, peerID, signalData) => {
+const sendSignal = (client, peerID, streamID, signalData) => {
   client.send(JSON.stringify({
     action: Event.SEND_SIGNAL,
     params: {
       peerID,
-      signalData: signalData,
+      signalData,
+      streamID,
     },
   }))
 }
@@ -129,7 +146,7 @@ const onJoinGame = (dispatch, params) => {
   })
 }
 
-const onTakeSeat = (dispatch, params, appState) => {
+const onTakeSeat = (dispatch, params, ws, appState) => {
   navigator.mediaDevices.getUserMedia({
     video: true,
     audio: false,
@@ -140,8 +157,16 @@ const onTakeSeat = (dispatch, params, appState) => {
       seatID: params.seatID,
       userStream: stream,
     })
-    console.log(appState.peers)
-    forEach(appState.peers, c => c.peer.addStream(stream))
+    updateStreamMap(dispatch, params.clientSeatMap)
+    updatePeers(
+      dispatch,
+      ws,
+      params.clientSeatMap,
+      appState.userID,
+      params.seatID,
+      stream,
+      appState.streams,
+    )
   })
   .catch(() => {}) // TODO Handle error
 }
@@ -172,10 +197,20 @@ const takeSeat = (client, seatID) => {
   }))
 }
 
-const updateGame = (dispatch, params) => {
+const updateGame = (dispatch, params, ws, appState) => {
+  updateStreamMap(dispatch, params.clientSeatMap)
+  updatePeers(
+    dispatch,
+    ws,
+    params.clientSeatMap,
+    appState.userID,
+    appState.seatID,
+    appState.userStream,
+    appState.streams,
+  )
   dispatch({
     type: actionTypes.GAME.UPDATE,
-    gameState: params,
+    gameState: omit(params, ['clientSeatMap']),
   })
 }
 
@@ -184,9 +219,7 @@ export {
   error,
 
   // WebRTC
-  newPeer,
   onReceiveSignal,
-  sendSignal,
 
   // Game
   joinGame,

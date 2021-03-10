@@ -19,7 +19,6 @@ const actionSendMessage string = "send-message"
 const actionTakeSeat string = "take-seat"
 
 // WebRTC Signaling actions
-const actionNewPeer string = "new-peer"
 const actionOnReceiveSignal string = "on-receive-signal"
 const actionSendSignal string = "send-signal"
 
@@ -128,6 +127,7 @@ func ProcessEvent(c *Client, e Event) {
 		err = HandleSendSignal(
 			c,
 			e.Params["peerID"].(string),
+			e.Params["streamID"].(string),
 			e.Params["signalData"],
 		)
 	} else if e.Action == actionTakeSeat {
@@ -167,17 +167,12 @@ func HandleJoin(c *Client, username string) error {
 
 	c.send <- createOnJoinEvent(c.id, c.username)
 
-	c.hub.broadcast <- BroadcastEvent{
-		Event:          createNewPeerEvent(c.id),
-		ExcludeClients: map[string]bool{c.id: true},
-	}
-
 	c.hub.broadcast <- NewBroadcastEvent(createNewMessageEvent(
 		systemUsername,
 		fmt.Sprintf("%s joined the game.", c.username),
 	))
 
-	c.send <- createUpdateGameEvent(c)
+	c.hub.broadcast <- NewBroadcastEvent(createUpdateGameEvent(c))
 	return nil
 }
 
@@ -188,12 +183,12 @@ func HandleSendMessage(c *Client, username string, message string) error {
 }
 
 // HandleSendSignal handles WebRTC signaling messages
-func HandleSendSignal(c *Client, recipientID string, signalData interface{}) error {
+func HandleSendSignal(c *Client, recipientID string, streamID string, signalData interface{}) error {
 	recipient, ok := c.hub.clients[recipientID]
 	if ok == false {
 		return fmt.Errorf("Recipient userID (%s) does not exist", recipientID)
 	}
-	recipient.send <- createOnReceiveSignal(c.id, signalData)
+	recipient.send <- createOnReceiveSignal(c.id, streamID, signalData)
 	return nil
 }
 
@@ -229,7 +224,7 @@ func HandleTakeSeat(c *Client, seatID string) error {
 	selectedPlayer.IsHuman = true
 	c.seatID = selectedPlayer.ID
 
-	c.send <- createOnTakeSeatEvent(seatID)
+	c.send <- createOnTakeSeatEvent(seatID, createClientSeatMap(c.hub.clients))
 
 	// Try to start a new game if one hasn't started yet.
 	if c.gameState.Stage == Waiting {
@@ -237,6 +232,7 @@ func HandleTakeSeat(c *Client, seatID string) error {
 	}
 
 	c.hub.broadcast <- NewBroadcastEvent(createUpdateGameEvent(c))
+
 	return nil
 }
 
@@ -630,29 +626,22 @@ func createOnJoinEvent(userID string, username string) Event {
 	}
 }
 
-func createOnTakeSeatEvent(seatID string) Event {
+func createOnTakeSeatEvent(seatID string, clientSeatMap map[string]string) Event {
 	return Event{
 		Action: actionOnTakeSeat,
 		Params: map[string]interface{}{
-			"seatID": seatID,
+			"seatID":        seatID,
+			"clientSeatMap": clientSeatMap,
 		},
 	}
 }
 
-func createNewPeerEvent(peerID string) Event {
-	return Event{
-		Action: actionNewPeer,
-		Params: map[string]interface{}{
-			"peerID": peerID,
-		},
-	}
-}
-
-func createOnReceiveSignal(peerID string, signalData interface{}) Event {
+func createOnReceiveSignal(peerID string, streamID string, signalData interface{}) Event {
 	return Event{
 		Action: actionOnReceiveSignal,
 		Params: map[string]interface{}{
 			"peerID":     peerID,
+			"streamID":   streamID,
 			"signalData": signalData,
 		},
 	}
@@ -662,13 +651,6 @@ func createUpdateGameEvent(c *Client) Event {
 	var actionBar map[string]interface{}
 
 	g := c.gameState
-
-	clientSeatMap := make(map[string]string)
-	for _, client := range c.hub.clients {
-		if client.seatID != "" {
-			clientSeatMap[client.seatID] = client.id
-		}
-	}
 
 	players := make([]map[string]interface{}, 0)
 	seats := g.Table.Seats
@@ -760,7 +742,7 @@ func createUpdateGameEvent(c *Client) Event {
 		Action: actionUpdateGame,
 		Params: map[string]interface{}{
 			"actionBar":     actionBar,
-			"clientSeatMap": clientSeatMap,
+			"clientSeatMap": createClientSeatMap(c.hub.clients),
 			"players":       players,
 			"stage":         g.Stage.String(),
 			"table":         table,
@@ -786,4 +768,12 @@ func createErrorEvent(err error) Event {
 			"error": err.Error(),
 		},
 	}
+}
+
+func createClientSeatMap(clients map[string]*Client) map[string]string {
+	clientSeatMap := make(map[string]string)
+	for _, c := range clients {
+		clientSeatMap[c.id] = c.seatID
+	}
+	return clientSeatMap
 }

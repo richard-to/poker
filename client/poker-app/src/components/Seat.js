@@ -2,7 +2,7 @@ import classNames from 'classnames'
 import { motion, useAnimation } from "framer-motion"
 import { noop } from 'lodash'
 import PropTypes from 'prop-types'
-import React, { useEffect, useRef } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 
 import AppPropTypes from '../AppPropTypes'
 import { PlayerLocation, PlayerStatus, Stage } from '../enums'
@@ -216,7 +216,13 @@ const Seat = ({
   stage,
   stream,
 }) => {
-  const videoRef = useRef(null)
+  const [_videoRef, setVideoRef] = useState(null)
+  const onSetVideoRef = useCallback(videoRef => {
+    setVideoRef(videoRef)
+    if (videoRef) {
+      videoRef.srcObject = stream
+    }
+  }, [stream])
 
   const card1Anim = useAnimation()
   const card2Anim = useAnimation()
@@ -231,8 +237,8 @@ const Seat = ({
       if (stage === Stage.PREFLOP) {
         card1Anim.set('initial')
         card2Anim.set('initial')
-        card1Anim.start('deal', { delay: dealDelay[0], duration: 0.75, times: [0, 1]})
-        card2Anim.start('deal', { delay: dealDelay[1], duration: 0.75, times: [0, 1]})
+        card1Anim.start('deal', {delay: dealDelay[0], duration: 0.75, times: [0, 1]})
+        card2Anim.start('deal', {delay: dealDelay[1], duration: 0.75, times: [0, 1]})
       } else if (stage !== Stage.PREFLOP) {
         card1Anim.set('deal')
         card2Anim.set('deal')
@@ -240,12 +246,6 @@ const Seat = ({
     }
     dealSeq()
   }, [card1Anim, card2Anim, dealDelay, playerActive, stage])
-
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.srcObject = stream
-    }
-  }, [videoRef, stream])
 
   if (player.status === PlayerStatus.VACATED) {
     return (
@@ -262,7 +262,6 @@ const Seat = ({
     )
   }
 
-
   return (
     <div className={getWrapCss(location)}>
       <div className="flex justify-center mb-2">
@@ -272,7 +271,7 @@ const Seat = ({
       <div className="flex">
           <div className="w-7/12">
             <div className="relative bg-black">
-              <video className="rounded shadow-lg" ref={videoRef} autoPlay />
+              <video className="rounded shadow-lg" ref={onSetVideoRef} autoPlay />
               <div className={getNameOverlayCss(player)}>
                 <p>{player.name}</p>
               </div>

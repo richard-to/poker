@@ -19,8 +19,9 @@ const initialState = {
   },
   error: null,
   gameState: null,
-  peers: {},
   seatID: null,
+  streams: {},
+  streamSeatMap: {},
   userID: null,
   username: null,
   userStream: null,
@@ -61,19 +62,29 @@ const AppStateProvider = ({ children }) => {
           ...state,
           gameState: action.gameState,
         }
-      case actionTypes.WEBRTC.SET_PEER:
+      case actionTypes.WEBRTC.REMOVE_STREAM:
         return {
           ...state,
-          peers: update(
-            state.peers, {
-              [action.peerID]: {$set: {peer: action.peer, stream: action.stream}},
+          streams: update(state.streams, {$unset: [action.streamID]}),
+        }
+      case actionTypes.WEBRTC.SET_STREAM:
+        return {
+          ...state,
+          streams: update(
+            state.streams, {
+              [action.streamID]: {$set: {
+                peer: action.peer,
+                peerID: action.peerID,
+                stream: action.stream,
+                streamID: action.streamID,
+              }},
             },
           ),
         }
-      case actionTypes.WEBRTC.REMOVE_PEER:
+      case actionTypes.WEBRTC.SET_STREAM_SEAT_MAP:
         return {
           ...state,
-          peers: update(state.peers, {$unset: [action.peerID]}),
+          streamSeatMap: action.streamSeatMap,
         }
       default:
         throw new Error()
