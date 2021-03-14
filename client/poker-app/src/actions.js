@@ -149,7 +149,7 @@ const onJoinGame = (dispatch, params) => {
 const onTakeSeat = (dispatch, params, ws, appState) => {
   navigator.mediaDevices.getUserMedia({
     video: true,
-    audio: false,
+    audio: process.env.REACT_APP_ENABLE_AUDIO === '1',
   })
   .then(stream => {
     dispatch({
