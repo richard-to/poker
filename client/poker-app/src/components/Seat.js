@@ -36,7 +36,7 @@ const actionCss = classNames(
 
   // spacing
   'm-1',
-  'px-2',
+  'px-1',
   'py-1',
 
   // text
@@ -183,9 +183,10 @@ const getDealerCss = (player) => (
 
     // text
     'font-medium',
-    'text-sm',
+    'text-xs',
   )
 )
+
 
 const getCardCss = (player) => (
   classNames(
