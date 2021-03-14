@@ -18,7 +18,7 @@ import {
 import { appStore } from './appStore'
 import { Event } from './enums'
 
-const BASE_WS_URL = 'ws://localhost:8000/ws'
+const BASE_WS_URL = process.env.REACT_APP_WEBSOCKET_URL
 
 const WebSocketContext = createContext(null)
 
