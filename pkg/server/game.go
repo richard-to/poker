@@ -14,6 +14,7 @@ const actionError string = "error"
 const actionOnJoin string = "on-join"
 const actionOnTakeSeat string = "on-take-seat"
 const actionJoin string = "join"
+const actionMute string = "mute"
 const actionNewMessage string = "new-message"
 const actionSendMessage string = "send-message"
 const actionTakeSeat string = "take-seat"
@@ -132,6 +133,8 @@ func ProcessEvent(c *Client, e Event) {
 		)
 	} else if e.Action == actionTakeSeat {
 		err = HandleTakeSeat(c, e.Params["seatID"].(string))
+	} else if e.Action == actionMute {
+		err = HandleMute(c, e.Params["seatID"].(string), e.Params["muted"].(bool))
 	} else {
 		// The remaining actions are turn dependent. The player can only act if it's their turn.
 		if c.gameState.CurrentSeat.Player.ID != c.seatID {
@@ -189,6 +192,12 @@ func HandleSendSignal(c *Client, recipientID string, streamID string, signalData
 		return fmt.Errorf("Recipient userID (%s) does not exist", recipientID)
 	}
 	recipient.send <- createOnReceiveSignal(c.id, streamID, signalData)
+	return nil
+}
+
+// HandleMute unmutes/mutes user
+func HandleMute(c *Client, seatID string, muted bool) error {
+	c.muted = muted
 	return nil
 }
 

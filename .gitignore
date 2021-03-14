@@ -1,6 +1,5 @@
 # Binaries
-/cmd/dev-cli/dev-cli
-/cmd/game-server/game-server
+/cmd/poker-app/poker-app
 
 # JS Client
 client/poker-app/public/images/cards/*

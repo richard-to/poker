@@ -32,13 +32,14 @@ var upgrader = websocket.Upgrader{
 // Client is a middleman between the websocket connection and the hub.
 type Client struct {
 	conn      *websocket.Conn
+	gameState *GameState
 	hub       *Hub
 	id        string
-	gameState *GameState
+	muted     bool
+	seatID    string
 	// Buffered channel of outbound messages.
 	send     chan Event
 	username string
-	seatID   string
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -126,6 +127,7 @@ func ServeWs(hub *Hub, gameState *GameState, w http.ResponseWriter, r *http.Requ
 		gameState: gameState,
 		hub:       hub,
 		id:        uuid.New().String(),
+		muted:     false,
 		send:      make(chan Event, 256),
 	}
 
