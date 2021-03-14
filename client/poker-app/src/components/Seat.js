@@ -1,3 +1,5 @@
+import { faMicrophone, faMicrophoneSlash } from '@fortawesome/free-solid-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import classNames from 'classnames'
 import { motion, useAnimation } from "framer-motion"
 import { noop } from 'lodash'
@@ -122,13 +124,13 @@ const getNameOverlayCss = (player) => (
     'right-0',
 
     // spacing
-    'p-1',
+    'px-2',
+    'py-1',
 
     // text
     'text-xs',
   )
 )
-
 
 
 const getButtonCss = (seatID) => (
@@ -216,13 +218,23 @@ const Seat = ({
   stage,
   stream,
 }) => {
-  const [_videoRef, setVideoRef] = useState(null)
+  const [videoRef, setVideoRef] = useState(null)
   const onSetVideoRef = useCallback(videoRef => {
     setVideoRef(videoRef)
     if (videoRef) {
       videoRef.srcObject = stream
     }
   }, [stream])
+
+  if (videoRef) {
+    if (seatID === player.id) {
+      videoRef.muted = true
+    } else {
+      videoRef.muted = player.muted
+    }
+  }
+
+  const muteIcon = player.muted ? faMicrophoneSlash : faMicrophone
 
   const card1Anim = useAnimation()
   const card2Anim = useAnimation()
@@ -271,9 +283,9 @@ const Seat = ({
       <div className="flex">
           <div className="w-7/12">
             <div className="relative bg-black">
-              <video className="rounded shadow-lg" ref={onSetVideoRef} autoPlay />
+              <video className="shadow-lg" ref={onSetVideoRef} autoPlay />
               <div className={getNameOverlayCss(player)}>
-                <p>{player.name}</p>
+                <p><FontAwesomeIcon icon={muteIcon} /> {player.name}</p>
               </div>
             </div>
           </div>

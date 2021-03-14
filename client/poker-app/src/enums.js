@@ -11,6 +11,7 @@ export const Event = deepFreeze({
   ERROR: 'error',
   FOLD: 'fold',
   JOIN: 'join',
+  MUTE_VIDEO: 'mute-video',
   NEW_MESSAGE: 'new-message',
   NEW_PEER: 'new-peer',
   ON_JOIN: 'on-join',

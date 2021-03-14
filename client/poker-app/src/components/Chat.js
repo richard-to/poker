@@ -3,7 +3,7 @@ import { noop } from 'lodash'
 import PropTypes from 'prop-types'
 import React, { useState, useEffect, useRef } from 'react'
 
-const cssChatLog = classNames(
+const chatLogCss = classNames(
   'overflow-y-auto',
 
   // dimensions
@@ -44,7 +44,7 @@ const Chat = ({messages, onSend}) => {
 
   return (
     <>
-      <div className={cssChatLog}>
+      <div className={chatLogCss}>
         {messages.map(message => (
           <div key={message.id} className="pb-1">
             <strong>{message.username}</strong>: {message.message}

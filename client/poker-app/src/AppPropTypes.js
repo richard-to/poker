@@ -23,6 +23,7 @@ const player = PropTypes.shape({
   isDealer: PropTypes.bool,
   id: PropTypes.string,
   name: PropTypes.string,
+  muted: PropTypes.bool.isRequired,
   status: PropTypes.oneOf([
     PlayerStatus.VACATED,
     PlayerStatus.SITTING_OUT,

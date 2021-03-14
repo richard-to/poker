@@ -40,6 +40,11 @@ const AppStateProvider = ({ children }) => {
             messages: update(state.chat.messages, {$push: [action.message]})
           },
         }
+      case actionTypes.GAME.UPDATE:
+        return {
+          ...state,
+          gameState: action.gameState,
+        }
       case actionTypes.SERVER.ERROR:
         return {
           ...state,
@@ -56,11 +61,6 @@ const AppStateProvider = ({ children }) => {
           ...state,
           seatID: action.seatID,
           userStream: action.userStream,
-        }
-      case actionTypes.GAME.UPDATE:
-        return {
-          ...state,
-          gameState: action.gameState,
         }
       case actionTypes.WEBRTC.REMOVE_STREAM:
         return {

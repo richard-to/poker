@@ -5,6 +5,7 @@ import { appStore } from '../appStore'
 import ActionBar from '../components/ActionBar'
 import Chat from '../components/Chat'
 import CommunityCards from '../components/CommunityCards'
+import OptionsBar from '../components/OptionsBar'
 import Seat from '../components/Seat'
 import Pot from '../components/Pot'
 import { PlayerLocation, Stage } from '../enums'
@@ -89,6 +90,7 @@ const Game = () => {
   }
 
   const showActionBar = stage !== Stage.WAITING &&  seatID === gameState.actionBar.seatID
+  const userPlayer = players.find(p => p.id === seatID)
 
   return (
     <div className="container-fluid">
@@ -218,6 +220,7 @@ const Game = () => {
 
         <div className="hidden sm:flex flex-col w-1/4 bg-gray-50">
           <Chat messages={chat.messages} onSend={ws.sendMessage} />
+          {userPlayer && <OptionsBar muted={userPlayer.muted} onMuteVideo={ws.sendMuteVideo} />}
         </div>
       </div>
     </div>

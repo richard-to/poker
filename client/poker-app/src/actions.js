@@ -175,16 +175,26 @@ const sendMessage = (client, username, message) => {
   client.send(JSON.stringify({
     action: Event.SEND_MESSAGE,
     params: {
-      username: username,
-      message: message,
+      username,
+      message,
     },
   }))
 }
 
+const sendMuteVideo = (client, muted) => {
+  client.send(JSON.stringify({
+    action: Event.MUTE_VIDEO,
+    params: {
+      muted,
+    },
+  }))
+}
+
+
 const sendPlayerAction = (client, action, params = {}) => {
   client.send(JSON.stringify({
-    action: action,
-    params: params,
+    action,
+    params,
   }))
 }
 
@@ -227,6 +237,7 @@ export {
   onJoinGame,
   onTakeSeat,
   sendMessage,
+  sendMuteVideo,
   sendPlayerAction,
   takeSeat,
   updateGame,

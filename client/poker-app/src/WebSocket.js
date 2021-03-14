@@ -11,6 +11,7 @@ import {
   onTakeSeat,
   joinGame,
   sendMessage,
+  sendMuteVideo,
   sendPlayerAction,
   takeSeat,
   updateGame,
@@ -71,8 +72,9 @@ const WebSocketProvider = ({ children }) => {
   ws = {
     client,
     joinGame: partial(joinGame, client),
-    sendPlayerAction: partial(sendPlayerAction, client),
     sendMessage: partial(sendMessage, client, appState.username),
+    sendMuteVideo: partial(sendMuteVideo, client),
+    sendPlayerAction: partial(sendPlayerAction, client),
     takeSeat: partial(takeSeat, client),
   }
 

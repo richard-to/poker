@@ -14,7 +14,7 @@ const actionError string = "error"
 const actionOnJoin string = "on-join"
 const actionOnTakeSeat string = "on-take-seat"
 const actionJoin string = "join"
-const actionMute string = "mute"
+const actionMuteVideo string = "mute-video"
 const actionNewMessage string = "new-message"
 const actionSendMessage string = "send-message"
 const actionTakeSeat string = "take-seat"
@@ -133,8 +133,8 @@ func ProcessEvent(c *Client, e Event) {
 		)
 	} else if e.Action == actionTakeSeat {
 		err = HandleTakeSeat(c, e.Params["seatID"].(string))
-	} else if e.Action == actionMute {
-		err = HandleMute(c, e.Params["seatID"].(string), e.Params["muted"].(bool))
+	} else if e.Action == actionMuteVideo {
+		err = HandleMuteVideo(c, e.Params["muted"].(bool))
 	} else {
 		// The remaining actions are turn dependent. The player can only act if it's their turn.
 		if c.gameState.CurrentSeat.Player.ID != c.seatID {
@@ -195,9 +195,10 @@ func HandleSendSignal(c *Client, recipientID string, streamID string, signalData
 	return nil
 }
 
-// HandleMute unmutes/mutes user
-func HandleMute(c *Client, seatID string, muted bool) error {
+// HandleMuteVideo unmutes/mutes user
+func HandleMuteVideo(c *Client, muted bool) error {
 	c.muted = muted
+	c.hub.broadcast <- NewBroadcastEvent(createUpdateGameEvent(c))
 	return nil
 }
 
@@ -664,6 +665,8 @@ func createUpdateGameEvent(c *Client) Event {
 	players := make([]map[string]interface{}, 0)
 	seats := g.Table.Seats
 
+	mutedSeatMap := createMutedSeatMap(c.hub.clients)
+
 	if g.Stage == Waiting {
 		// Players data
 		for i := 0; i < seats.Len(); i++ {
@@ -675,6 +678,7 @@ func createUpdateGameEvent(c *Client) Event {
 				"id":         seats.Player.ID,
 				"isActive":   false,
 				"isDealer":   false,
+				"muted":      mutedSeatMap[seats.Player.ID],
 				"name":       seats.Player.Name,
 				"status":     seats.Player.Status.String(),
 			})
@@ -703,6 +707,7 @@ func createUpdateGameEvent(c *Client) Event {
 				"id":         seats.Player.ID,
 				"isActive":   seats.Player.ID == activePlayer.ID,
 				"isDealer":   seats.Player.ID == g.Table.Dealer.Player.ID,
+				"muted":      mutedSeatMap[seats.Player.ID],
 				"name":       seats.Player.Name,
 				"status":     seats.Player.Status.String(),
 			})
@@ -785,4 +790,14 @@ func createClientSeatMap(clients map[string]*Client) map[string]string {
 		clientSeatMap[c.id] = c.seatID
 	}
 	return clientSeatMap
+}
+
+func createMutedSeatMap(clients map[string]*Client) map[string]bool {
+	mutedSeatMap := make(map[string]bool)
+	for _, c := range clients {
+		if c.seatID != "" {
+			mutedSeatMap[c.seatID] = c.muted
+		}
+	}
+	return mutedSeatMap
 }
