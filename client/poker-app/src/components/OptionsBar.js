@@ -24,11 +24,12 @@ const getMicButtonCss = (muted) => (
 
 
 const OptionsBar = ({muted, onMuteVideo}) => {
-  const muteIcon = muted ? faMicrophoneSlash : faMicrophone
+  const icon = muted ? faMicrophoneSlash : faMicrophone
+  const label = muted ? 'Unmute' : 'Mute'
   return (
     <div className="flex">
       <button className={getMicButtonCss(muted)} onClick={() => onMuteVideo(!muted)}>
-        <FontAwesomeIcon icon={muteIcon} /> Mute
+        <FontAwesomeIcon icon={icon} /> {label}
       </button>
     </div>
   )
