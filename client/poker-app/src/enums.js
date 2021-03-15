@@ -14,6 +14,7 @@ export const Event = deepFreeze({
   MUTE_VIDEO: 'mute-video',
   NEW_MESSAGE: 'new-message',
   NEW_PEER: 'new-peer',
+  ON_HOLE_CARDS: 'on-hole-cards',
   ON_JOIN: 'on-join',
   ON_RECEIVE_SIGNAL: 'on-receive-signal',
   ON_TAKE_SEAT: 'on-take-seat',

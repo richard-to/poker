@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/richard-to/go-poker/pkg/poker"
@@ -28,6 +29,7 @@ const actionBet string = "bet"
 const actionCall string = "call"
 const actionCheck string = "check"
 const actionFold string = "fold"
+const actionOnHoleCards string = "on-hole-cards"
 const actionRaise string = "raise"
 const actionUpdateGame string = "update-game"
 
@@ -77,6 +79,7 @@ type GameState struct {
 	BettingRound *poker.BettingRound
 	CurrentSeat  *poker.Seat
 	Deck         poker.Deck
+	PlayerMap    map[string]*poker.Player
 	Stage        GameStage
 	Table        poker.Table
 }
@@ -101,7 +104,7 @@ func DisconnectPlayer(c *Client) {
 		player.IsHuman = false
 		if c.gameState.Stage == Waiting {
 			player.Status = poker.PlayerVacated
-			c.hub.broadcast <- NewBroadcastEvent(createUpdateGameEvent(c))
+			c.hub.broadcast <- NewBroadcastEvent(createUpdateGameEvent(c, false))
 		} else if c.gameState.Stage < Showdown {
 			HandleComputerMove(c)
 		}
@@ -137,7 +140,9 @@ func ProcessEvent(c *Client, e Event) {
 		err = HandleMuteVideo(c, e.Params["muted"].(bool))
 	} else {
 		// The remaining actions are turn dependent. The player can only act if it's their turn.
-		if c.gameState.CurrentSeat.Player.ID != c.seatID {
+		if c.gameState.Stage < Preflop || c.gameState.Stage > River {
+			err = fmt.Errorf("You cannot move during the %s stage", c.gameState.Stage.String())
+		} else if c.gameState.CurrentSeat.Player.ID != c.seatID {
 			err = fmt.Errorf("You cannot move out of turn")
 		} else if e.Action == actionFold {
 			err = HandleFold(c)
@@ -175,7 +180,7 @@ func HandleJoin(c *Client, username string) error {
 		fmt.Sprintf("%s joined the game.", c.username),
 	))
 
-	c.hub.broadcast <- NewBroadcastEvent(createUpdateGameEvent(c))
+	c.hub.broadcast <- NewBroadcastEvent(createUpdateGameEvent(c, false))
 	return nil
 }
 
@@ -198,7 +203,7 @@ func HandleSendSignal(c *Client, recipientID string, streamID string, signalData
 // HandleMuteVideo unmutes/mutes user
 func HandleMuteVideo(c *Client, muted bool) error {
 	c.muted = muted
-	c.hub.broadcast <- NewBroadcastEvent(createUpdateGameEvent(c))
+	c.hub.broadcast <- NewBroadcastEvent(createUpdateGameEvent(c, false))
 	return nil
 }
 
@@ -239,9 +244,10 @@ func HandleTakeSeat(c *Client, seatID string) error {
 	// Try to start a new game if one hasn't started yet.
 	if c.gameState.Stage == Waiting {
 		StartNewHand(c.gameState)
+		sendHoleCardEvents(c.hub.clients)
 	}
 
-	c.hub.broadcast <- NewBroadcastEvent(createUpdateGameEvent(c))
+	c.hub.broadcast <- NewBroadcastEvent(createUpdateGameEvent(c, false))
 
 	return nil
 }
@@ -321,7 +327,7 @@ func GoToNextGameState(c *Client) error {
 			break
 		}
 	}
-	c.hub.broadcast <- NewBroadcastEvent(createUpdateGameEvent(c))
+	c.hub.broadcast <- NewBroadcastEvent(createUpdateGameEvent(c, false))
 
 	HandleComputerMove(c)
 
@@ -378,6 +384,7 @@ func NextGameState(c *Client) error {
 		))
 		poker.AwardPot(&g.Table, winnerByFold)
 		StartNewHand(g)
+		sendHoleCardEvents(c.hub.clients)
 		c.hub.broadcast <- NewBroadcastEvent(createNewMessageEvent(systemUsername, "Starting new hand."))
 		return nil
 	}
@@ -389,12 +396,20 @@ func NextGameState(c *Client) error {
 		if skipToShowdown {
 			if g.Stage < Turn {
 				poker.DealFlop(&g.Deck, &g.Table)
+				g.Stage = Flop
+				c.hub.broadcast <- NewBroadcastEvent(createUpdateGameEvent(c, true))
+				time.Sleep(3 * time.Second)
 			}
 			if g.Stage < River {
 				poker.DealTurn(&g.Deck, &g.Table)
+				g.Stage = Turn
+				c.hub.broadcast <- NewBroadcastEvent(createUpdateGameEvent(c, true))
+				time.Sleep(2 * time.Second)
 			}
 			if g.Stage < Showdown {
 				poker.DealRiver(&g.Deck, &g.Table)
+				g.Stage = River
+				c.hub.broadcast <- NewBroadcastEvent(createUpdateGameEvent(c, true))
 			}
 			g.Stage = Showdown
 		}
@@ -433,8 +448,12 @@ func NextGameState(c *Client) error {
 			}
 			c.hub.broadcast <- NewBroadcastEvent(createNewMessageEvent(systemUsername, "Dealing river."))
 		} else if g.Stage == Showdown {
+			c.hub.broadcast <- NewBroadcastEvent(createUpdateGameEvent(c, true))
+			time.Sleep(2 * time.Second)
 			DetermineWinners(c)
+			time.Sleep(1 * time.Second)
 			StartNewHand(g)
+			sendHoleCardEvents(c.hub.clients)
 			c.hub.broadcast <- NewBroadcastEvent(createNewMessageEvent(systemUsername, "Starting new hand."))
 		} else {
 			return fmt.Errorf("Invalid game stage encountered: %s", g.Stage.String())
@@ -476,6 +495,7 @@ func DetermineWinners(c *Client) {
 // NewGameState creates a new game state
 func NewGameState() *GameState {
 	// Initialize vacated seats
+	playerMap := make(map[string]*poker.Player)
 	seats := poker.NewSeat(numPlayers)
 	for i := 0; i < seats.Len(); i++ {
 		seats.Player = &poker.Player{
@@ -483,6 +503,7 @@ func NewGameState() *GameState {
 			Status:  poker.PlayerVacated,
 			IsHuman: false,
 		}
+		playerMap[seats.Player.ID] = seats.Player
 		seats = seats.Next()
 	}
 
@@ -490,12 +511,13 @@ func NewGameState() *GameState {
 		BettingRound: nil,
 		CurrentSeat:  seats,
 		Deck:         poker.NewDeck(),
+		PlayerMap:    playerMap,
+		Stage:        Waiting,
 		Table: poker.Table{
 			MinBet: defaultMinBet,
 			Pot:    poker.NewPot(),
 			Seats:  seats,
 		},
-		Stage: Waiting,
 	}
 }
 
@@ -626,6 +648,14 @@ func GetActions(g *GameState) []string {
 	return actions
 }
 
+func sendHoleCardEvents(clients map[string]*Client) {
+	for _, c := range clients {
+		if p, ok := c.gameState.PlayerMap[c.seatID]; ok {
+			c.send <- createPlayerHoleCardsEvent(c.seatID, p.HoleCards)
+		}
+	}
+}
+
 func createOnJoinEvent(userID string, username string) Event {
 	return Event{
 		Action: actionOnJoin,
@@ -657,7 +687,7 @@ func createOnReceiveSignal(peerID string, streamID string, signalData interface{
 	}
 }
 
-func createUpdateGameEvent(c *Client) Event {
+func createUpdateGameEvent(c *Client, showCards bool) Event {
 	var actionBar map[string]interface{}
 
 	g := c.gameState
@@ -674,7 +704,7 @@ func createUpdateGameEvent(c *Client) Event {
 				"chips":      seats.Player.Chips,
 				"chipsInPot": nil,
 				"hasFolded":  seats.Player.HasFolded,
-				"holeCards":  seats.Player.HoleCards,
+				"holeCards":  [2]*poker.Card{},
 				"id":         seats.Player.ID,
 				"isActive":   false,
 				"isDealer":   false,
@@ -699,11 +729,15 @@ func createUpdateGameEvent(c *Client) Event {
 		// Players data
 		activePlayer := g.CurrentSeat.Player
 		for i := 0; i < seats.Len(); i++ {
+			holeCards := [2]*poker.Card{}
+			if showCards && seats.Player.HasFolded == false {
+				holeCards = seats.Player.HoleCards
+			}
 			players = append(players, map[string]interface{}{
 				"chips":      seats.Player.Chips,
 				"chipsInPot": g.BettingRound.Bets[seats.Player.ID],
 				"hasFolded":  seats.Player.HasFolded,
-				"holeCards":  seats.Player.HoleCards,
+				"holeCards":  holeCards,
 				"id":         seats.Player.ID,
 				"isActive":   seats.Player.ID == activePlayer.ID,
 				"isDealer":   seats.Player.ID == g.Table.Dealer.Player.ID,
@@ -780,6 +814,16 @@ func createErrorEvent(err error) Event {
 		Action: actionError,
 		Params: map[string]interface{}{
 			"error": err.Error(),
+		},
+	}
+}
+
+func createPlayerHoleCardsEvent(seatID string, c [2]*poker.Card) Event {
+	return Event{
+		Action: actionOnHoleCards,
+		Params: map[string]interface{}{
+			"holeCards": c,
+			"seatID":    seatID,
 		},
 	}
 }

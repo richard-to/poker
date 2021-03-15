@@ -6,6 +6,7 @@ import { w3cwebsocket} from "websocket"
 import {
   error,
   newMessage,
+  onHoleCards,
   onJoinGame,
   onReceiveSignal,
   onTakeSeat,
@@ -53,16 +54,18 @@ const WebSocketProvider = ({ children }) => {
       let event = JSON.parse(payload.data)
       if (event.action === Event.ERROR) {
         error(dispatch, event.params)
+      } else if (event.action === Event.NEW_MESSAGE) {
+        newMessage(dispatch, event.params)
+      } else if (event.action === Event.ON_HOLE_CARDS) {
+        onHoleCards(dispatch, event.params, appState)
       } else if (event.action === Event.ON_JOIN) {
         onJoinGame(dispatch, event.params)
       } else if (event.action === Event.ON_TAKE_SEAT) {
         onTakeSeat(dispatch, event.params, client, appState)
-      } else if (event.action === Event.NEW_MESSAGE) {
-        newMessage(dispatch, event.params)
-      } else if (event.action === Event.UPDATE_GAME) {
-        updateGame(dispatch, event.params, client, appState)
       } else if (event.action === Event.ON_RECEIVE_SIGNAL) {
         onReceiveSignal(dispatch, event.params, client, appState)
+      } else if (event.action === Event.UPDATE_GAME) {
+        updateGame(dispatch, event.params, client, appState)
       } else {
         error(dispatch, {error: 'Unknown message received.'})
       }

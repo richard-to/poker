@@ -88,8 +88,7 @@ const Game = () => {
   if (!gameState) {
     return <div className="container-fluid"></div>
   }
-
-  const showActionBar = stage !== Stage.WAITING &&  seatID === gameState.actionBar.seatID
+  const showActionBar = ![Stage.WAITING, Stage.SHOWDOWN].includes(stage) && seatID === gameState.actionBar.seatID
   const userPlayer = players.find(p => p.id === seatID)
 
   return (

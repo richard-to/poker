@@ -107,40 +107,43 @@ const ActionBar = ({
   const raiseLabel = callAmount === 0 ? 'BET' : 'RAISE TO'
   const placeholder = callAmount === 0 ? 'Enter a bet' : 'Enter a raise'
 
-  const showRaiseSlider = actions.includes(Event.RAISE) && callRemaining + minRaiseAmount < totalChips
+  let showRaiseSlider = false
+  let actionButtons = []
 
-  const actionButtons = actions.map(action => {
-    if (action === Event.FOLD) {
+  if (actions) {
+    showRaiseSlider = actions.includes(Event.RAISE) && callRemaining + minRaiseAmount < totalChips
+    actionButtons = actions.map(action => {
+      if (action === Event.FOLD) {
+        return (
+          <button key={action} className={buttonCss} onClick={() => onAction(action)}>
+            {action.toUpperCase()}
+          </button>
+        )
+      }
+
+      if (action === Event.CHECK) {
+        return (
+          <button key={action} className={buttonCss} onClick={() => onAction(action)}>
+            {action.toUpperCase()}
+          </button>
+        )
+      }
+
+      if (action === Event.CALL) {
+        return (
+          <button key={action} className={buttonCss} onClick={() => onAction(action)}>
+            {action.toUpperCase()}<br />{callRemainingLabel}
+          </button>
+        )
+      }
+
       return (
-        <button key={action} className={buttonCss} onClick={() => onAction(action)}>
-          {action.toUpperCase()}
+        <button key={action} className={buttonCss} onClick={() => onAction(action, {value: raiseToAmount})}>
+          {raiseLabel}<br />{raiseToAmountLabel}
         </button>
       )
-    }
-
-    if (action === Event.CHECK) {
-      return (
-        <button key={action} className={buttonCss} onClick={() => onAction(action)}>
-          {action.toUpperCase()}
-        </button>
-      )
-    }
-
-    if (action === Event.CALL) {
-      return (
-        <button key={action} className={buttonCss} onClick={() => onAction(action)}>
-          {action.toUpperCase()}<br />{callRemainingLabel}
-        </button>
-      )
-    }
-
-    return (
-      <button key={action} className={buttonCss} onClick={() => onAction(action, {value: raiseToAmount})}>
-        {raiseLabel}<br />{raiseToAmountLabel}
-      </button>
-    )
-  })
-
+    })
+  }
 
   const betSizeSuggestions = makeBetSizesSuggestions(
     minBetAmount,

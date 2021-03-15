@@ -22,6 +22,7 @@ const initialState = {
   seatID: null,
   streams: {},
   streamSeatMap: {},
+  userHoleCards: [null, null],
   userID: null,
   username: null,
   userStream: null,
@@ -39,6 +40,16 @@ const AppStateProvider = ({ children }) => {
           chat: {
             messages: update(state.chat.messages, {$push: [action.message]})
           },
+        }
+      case actionTypes.GAME.ON_HOLE_CARDS:
+        return {
+          ...state,
+          gameState: {
+            ...state.gameState,
+            players: action.players,
+          },
+          seatID: action.seatID,
+          userHoleCards: action.userHoleCards,
         }
       case actionTypes.GAME.UPDATE:
         return {

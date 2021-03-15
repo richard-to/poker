@@ -7,6 +7,7 @@ import { set } from 'lodash'
  */
 const actionNames = [
   'CHAT.NEW_MESSAGE',
+  'GAME.ON_HOLE_CARDS',
   'GAME.UPDATE',
   'SERVER.ERROR',
   'SERVER.ON_JOIN',

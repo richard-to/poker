@@ -138,6 +138,20 @@ const newMessage = (dispatch, params) => {
   })
 }
 
+const onHoleCards = (dispatch, params, appState) => {
+  const players = appState.gameState.players
+  const player = players.find(p => p.id === params.seatID)
+  if (player) {
+    player.holeCards = params.holeCards
+  }
+  dispatch({
+    type: actionTypes.GAME.ON_HOLE_CARDS,
+    players,
+    seatID: params.seatID,
+    userHoleCards: params.holeCards,
+  })
+}
+
 const onJoinGame = (dispatch, params) => {
   dispatch({
     type: actionTypes.SERVER.ON_JOIN,
@@ -218,6 +232,10 @@ const updateGame = (dispatch, params, ws, appState) => {
     appState.userStream,
     appState.streams,
   )
+  const userPlayer = params.players.find(p => p.id === appState.seatID)
+  if (userPlayer) {
+    userPlayer.holeCards = appState.userHoleCards
+  }
   dispatch({
     type: actionTypes.GAME.UPDATE,
     gameState: omit(params, ['clientSeatMap']),
@@ -234,6 +252,7 @@ export {
   // Game
   joinGame,
   newMessage,
+  onHoleCards,
   onJoinGame,
   onTakeSeat,
   sendMessage,
