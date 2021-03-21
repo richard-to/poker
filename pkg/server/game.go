@@ -194,7 +194,9 @@ func HandleSendMessage(c *Client, username string, message string) error {
 func HandleSendSignal(c *Client, recipientID string, streamID string, signalData interface{}) error {
 	recipient, ok := c.hub.clients[recipientID]
 	if ok == false {
-		return fmt.Errorf("Recipient userID (%s) does not exist", recipientID)
+		// Temporarily make this a noop until I can improve the error handling a bit
+		// return fmt.Errorf("Recipient userID (%s) does not exist", recipientID)
+		return nil
 	}
 	recipient.send <- createOnReceiveSignal(c.id, streamID, signalData)
 	return nil

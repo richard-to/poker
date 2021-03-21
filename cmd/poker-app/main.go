@@ -43,12 +43,6 @@ func main() {
 		server.ServeWs(hub, gameState, c.Writer, c.Request)
 	})
 
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": os.Getenv("POKER_APP_ENV"),
-		})
-	})
-
 	// Serve static react build directory
 	buildDir := os.Getenv("REACT_CLIENT_BUILD_DIR")
 	r.StaticFile("/", buildDir+"/index.html")
